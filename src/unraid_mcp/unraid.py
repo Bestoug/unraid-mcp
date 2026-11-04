@@ -63,8 +63,11 @@ SYSTEM = """query {
   info {
     os { hostname uptime release }
     cpu { brand cores threads }
-    memory { total free used }
     versions { core { unraid api } }
+  }
+  metrics {
+    memory { total used available percentTotal }
+    cpu { percentTotal }
   }
 }"""
 
