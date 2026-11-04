@@ -17,6 +17,10 @@ CONT = {"docker": {"containers": [
     "  MUTATION{array{stop}}",
     "query { online } mutation { array { stop } }",
     "subscription { cpu { percentTotal } }",
+    ",mutation { docker { stop(id: \"x\") } }",
+    "query { online },mutation { docker { stop(id: \"x\") } }",
+    "\ufeffmutation { docker { stop(id: \"x\") } }",
+    "query { online }\tmutation{array{stop}}",
 ])
 def test_mutationen_abgelehnt(q):
     assert not unraid.ist_nur_lesend(q)

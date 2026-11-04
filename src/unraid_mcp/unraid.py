@@ -40,15 +40,17 @@ def _post(s: Settings, query: str, variables: dict | None = None) -> dict:
     return data.get("data") or {}
 
 
-_MUTATION = re.compile(r"^\s*(mutation|subscription)\b", re.I)
-
-
 def ist_nur_lesend(query: str) -> bool:
-    """True, wenn die Abfrage keine Mutation/Subscription enthält (auch nicht als zweite Operation)."""
+    """True, wenn die Abfrage nirgends eine Mutation/Subscription enthält.
+
+    Prüft das Wort überall außerhalb von Strings und Kommentaren, nicht nur am Anfang:
+    GraphQL ignoriert Kommas und unsichtbare Zeichen, so dass z. B. ``,mutation {…}``
+    sonst durchrutschen würde. Lieber eine harmlose Abfrage zu viel ablehnen.
+    """
     ohne_strings = re.sub(r'"(?:\\.|[^"\\])*"', '""', query)
     ohne_kommentare = re.sub(r"#[^\n]*", "", ohne_strings)
-    return not re.search(r"(^|[}\s])(mutation|subscription)\b", ohne_kommentare, re.I) \
-        and not _MUTATION.match(ohne_kommentare)
+    return not re.search(r"(?<![A-Za-z0-9_])(mutation|subscription)(?![A-Za-z0-9_])",
+                         ohne_kommentare, re.I)
 
 
 def query(s: Settings, q: str, variables: dict | None = None) -> dict:
