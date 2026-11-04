@@ -13,7 +13,7 @@ def S(tmp_path, **kw):
     (tmp_path / "arbeit").mkdir(exist_ok=True)
     return Settings(unraid_url="http://x/graphql", unraid_api_key="k", access_token="t" * 40,
                     verwaltung=True, vorlagen_dir=str(tmp_path / "vorlagen"),
-                    arbeit_dir=str(tmp_path / "arbeit"), private_freigaben=("dokumente",), **kw)
+                    arbeit_dir=str(tmp_path / "arbeit"), **kw)
 
 
 # ---------- Regeln ----------
@@ -33,8 +33,11 @@ def test_erlaubte_ordner(tmp_path, pfad):
     assert v.pruefe_host_pfad(S(tmp_path), pfad, "Jellyfin", freigabe=False)
 
 
-def test_private_freigabe_nur_mit_freigabe(tmp_path):
+def test_andere_freigabe_nur_mit_freigabe(tmp_path):
     assert v.pruefe_host_pfad(S(tmp_path), "/mnt/user/dokumente", "x", freigabe=True)
+    s = Settings(unraid_url="http://x/graphql", unraid_api_key="k", access_token="t" * 40,
+                 erlaubte_freigaben=("daten", "appdata", "claude", "musik"))
+    assert v.pruefe_host_pfad(s, "/mnt/user/musik/rock", "x", freigabe=False)
 
 
 @pytest.mark.parametrize("image,ok", [
@@ -121,7 +124,7 @@ class FakeDocker:
         self.calls, self.start_fehler, self.neu = [], start_fehler, False
 
     def alle(self):
-        return [{"Names": ["/Jellyfin"], "Ports": [{"PublicPort": 8096}]}]
+        return [{"Id": "aaa111", "Names": ["/Jellyfin"], "Ports": []}]
 
     def inspect(self, name):
         if name == "neu":
@@ -149,12 +152,12 @@ def test_aendern_ok(tmp_path, monkeypatch):
     r = v.aendern(s, "Jellyfin", [], [{"host": "/mnt/user/daten/Musik", "container": "/data/music",
                                        "nur_lesen": True}], {}, ["/dev/dri"], False)
     assert r["unraid_vorlage"] == "aktualisiert"
-    namen = [c[0] for c in d.calls]
+    namen = [c[0] for c in d.calls if c[0] != "_req"]
     assert namen == ["stop", "rename", "create", "start", "remove"]
     assert d.calls[-1][1][0] == "aaa111"                       # alter Container entfernt, nicht der neue
     xml = (tmp_path / "vorlagen" / "my-Jellyfin.xml").read_text()
     assert "/mnt/user/daten/Musik" in xml and "/dev/dri" in xml
-    assert any(p.name.startswith("my-Jellyfin.xml.") for p in (tmp_path / "arbeit/protokoll/sicherung").iterdir())
+    assert any(p.name.startswith("my-Jellyfin.xml.") for p in (tmp_path / "vorlagen/claude-sicherung").iterdir())
     assert "TZ=" not in "".join(p.read_text() for p in (tmp_path / "arbeit/protokoll/sicherung").glob("*.json"))
     assert "geändert" in (tmp_path / "arbeit/protokoll/verwaltung.md").read_text()
 
@@ -209,3 +212,92 @@ def test_host_zu_container():
     assert jellyfin.host_zu_container(mounts, "/mnt/user/daten/Filme/Neu") == "/data/movies/Neu"
     assert jellyfin.host_zu_container(mounts, "/mnt/user/daten/Musik") == "/media/Musik"
     assert jellyfin.host_zu_container(mounts, "/mnt/user/andere") is None
+
+
+# ---------- Nachbesserungen nach Sicherheitsprüfung ----------
+
+def test_code_variablen_und_steuerzeichen():
+    for k in ("DOCKER_MODS", "INSTALL_PACKAGES", "LD_PRELOAD", "PATH"):
+        with pytest.raises(UnraidFehler):
+            v.pruefe_variablen({k: "x"}, False)
+    assert v.pruefe_variablen({"DOCKER_MODS": "x"}, True)
+    with pytest.raises(UnraidFehler):
+        v.pruefe_variablen({"A": "x\x00y"}, False)
+    with pytest.raises(UnraidFehler):
+        v.pruefe_variablen({"A": "x\ny"}, False)
+
+
+def test_eigene_ports_belegt(tmp_path, monkeypatch):
+    d = FakeDocker()
+    monkeypatch.setattr(v, "_docker", lambda s: d)
+    with pytest.raises(UnraidFehler, match="belegt"):
+        v.aendern(S(tmp_path), "Jellyfin", [{"host": 8096, "container": 9000}], [], {}, [], False)
+
+
+def test_absturzschleife_ist_fehler(monkeypatch):
+    monkeypatch.setattr(v, "STABIL_SEKUNDEN", 0)
+    class D:
+        def inspect(self, c):
+            return {"State": {"Running": True, "Restarting": False}, "RestartCount": 2}
+    with pytest.raises(UnraidFehler, match="Absturzschleife"):
+        v._warte_laeuft(D(), "x")
+
+
+def test_gestoppter_container_bleibt_gestoppt(tmp_path):
+    d = FakeDocker()
+    insp = json.loads(json.dumps(JELLYFIN))
+    insp["State"]["Running"] = False
+    v.neu_erstellen(S(tmp_path), d, insp, {})
+    namen = [c[0] for c in d.calls]
+    assert "start" not in namen and "stop" not in namen and namen[-1] == "remove"
+
+
+def test_rename_fehler_startet_alten_wieder(tmp_path):
+    d = FakeDocker()
+    orig = d.__getattr__("rename")
+    def rename(cid, neu):
+        d.calls.append(("rename", (cid, neu)))
+        raise RuntimeError("kaputt")
+    d.rename = rename
+    with pytest.raises(UnraidFehler):
+        v.neu_erstellen(S(tmp_path), d, json.loads(json.dumps(JELLYFIN)), {})
+    assert d.calls[-1] == ("start", ("aaa111",))
+
+
+def test_image_standardwerte_werden_nicht_festgeschrieben():
+    img = {"Env": ["PATH=/usr/bin", "JELLYFIN_VERSION=10.10"], "Labels": {"version": "10.10"},
+           "Entrypoint": ["/jellyfin/jellyfin"], "ExposedPorts": {"8096/tcp": {}}}
+    insp = json.loads(json.dumps(JELLYFIN))
+    insp["Config"].update({"Env": ["PATH=/usr/bin", "JELLYFIN_VERSION=10.10", "TZ=Europe/Berlin"],
+                           "Labels": {"version": "10.10", "net.unraid.docker.managed": "dockerman"},
+                           "Entrypoint": ["/jellyfin/jellyfin"]})
+    body = v.body_aus_inspect(insp, image_cfg=img)
+    assert body["Env"] == ["TZ=Europe/Berlin"]
+    assert body["Labels"] == {"net.unraid.docker.managed": "dockerman"}
+    assert "Entrypoint" not in body and "ExposedPorts" not in body
+
+
+def test_geschuetzte_container(tmp_path, monkeypatch):
+    d = FakeDocker()
+    d.inspect = lambda n: {"Id": "x", "Name": "/icloud-mcp"}
+    monkeypatch.setattr(v, "_docker", lambda s: d)
+    s = Settings(unraid_url="http://x/graphql", unraid_api_key="k", access_token="t" * 40, verwaltung=True,
+                 geschuetzte_container=("unraid-mcp", "icloud-mcp"))
+    with pytest.raises(UnraidFehler, match="geschützt"):
+        v.aktualisieren(s, "icloud-mcp")
+
+
+def test_vorlagen_sicherung_nicht_im_arbeitsordner(tmp_path, monkeypatch):
+    s = S(tmp_path)
+    (tmp_path / "vorlagen" / "my-Jellyfin.xml").write_text(
+        '<?xml version="1.0"?><Container version="2"><Name>Jellyfin</Name>'
+        '<Config Type="Variable" Target="API_KEY">geheim</Config></Container>')
+    v.sichern(s, "Jellyfin", JELLYFIN, str(tmp_path / "vorlagen" / "my-Jellyfin.xml"))
+    assert "geheim" not in "".join(p.read_text() for p in (tmp_path / "arbeit").rglob("*") if p.is_file())
+    assert list((tmp_path / "vorlagen" / "claude-sicherung").iterdir())
+
+
+def test_teile_image_mit_tag_und_digest():
+    assert v.teile_image("jellyfin/jellyfin:10.10@sha256:abc") == ("jellyfin/jellyfin", "sha256:abc")
+    with pytest.raises(UnraidFehler):
+        v.pruefe_ziel("//etc")

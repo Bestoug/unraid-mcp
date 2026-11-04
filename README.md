@@ -19,11 +19,13 @@ Kleiner MCP-Server, der Claude Zugriff auf einen **Unraid-Server** gibt. Läuft 
 - Ohne `VERWALTUNG=1`: kein Docker-Socket, kein `privileged`, kein Zugriff auf das Host-Dateisystem außer den eingebundenen Ordnern; Pfade mit `..` oder Symlinks nach draußen werden abgelehnt
 - Mit `VERWALTUNG=1` (Docker-Socket = Vollzugriff, daher feste Regeln im Code):
   - neue/geänderte Container nie `privileged`, nie Host-Netz, keine zusätzlichen Rechte, Geräte nur `/dev/dri`
-  - Ordner nur unter `/mnt/user/<Freigabe>/`; gesperrt: `/boot`, `system`, ganz `/mnt/user`, fremde `appdata`-Ordner; `PRIVATE_FREIGABEN` nur mit Freigabe
+  - Ordner nur unter `/mnt/user/<Freigabe>/`; gesperrt: `/boot`, `system`, ganz `/mnt/user`, fremde `appdata`-Ordner; andere Freigaben als `daten`, `appdata` (nur eigener Ordner), `claude` und `ERLAUBTE_FREIGABEN` nur mit Freigabe
   - Images nur aus bekannten Quellen (linuxserver, jellyfin, ghcr.io/bestoug, offizielle Images, `ERLAUBTE_IMAGES`), sonst nur mit Freigabe
-  - Tailscale/Funnel (Erreichbarkeit aus dem Internet) nur mit Freigabe
+  - Tailscale/Funnel (Erreichbarkeit aus dem Internet) und Variablen, die Code nachladen (`DOCKER_MODS`, `INSTALL_*`, `LD_*`, `PATH` …), nur mit Freigabe; keine Steuerzeichen in Werten
+  - Container ändern startet nichts, was vorher gestoppt war; eine Absturzschleife gilt als Fehler → alter Zustand zurück
+  - geschützte Container (`GESCHUETZTE_CONTAINER`) werden nicht geändert oder aktualisiert
   - unraid-mcp verändert sich nie selbst
-  - vor jeder Änderung Sicherung (Einstellungen ohne Geheimnisse + Unraid-Vorlage) in `protokoll/sicherung`, Protokoll in `protokoll/verwaltung.md`; schlägt eine Änderung fehl, wird der alte Container wiederhergestellt
+  - vor jeder Änderung Sicherung: Einstellungen ohne Geheimnisse in `protokoll/sicherung`, Unraid-Vorlage (mit Geheimnissen) nur auf dem USB-Stick unter `templates-user/claude-sicherung`, Protokoll in `protokoll/verwaltung.md`; schlägt eine Änderung fehl, wird der alte Container wiederhergestellt
   - die Unraid-Vorlage (`my-<name>.xml`) wird mitgepflegt, damit „Edit“ und „Force Update“ dieselben Einstellungen nutzen
   - läuft dann als root (Docker-Socket, Vorlagen auf dem USB-Stick); neue Dateien im Arbeitsordner gehören trotzdem `nobody:users`
 - Der Container `unraid-mcp` selbst lässt sich nicht anhalten; weitere mit `GESCHUETZTE_CONTAINER`
@@ -45,7 +47,7 @@ Kleiner MCP-Server, der Claude Zugriff auf einen **Unraid-Server** gibt. Läuft 
 | `PORT` | Port im Container, Standard `8000` |
 | `VERWALTUNG` | `1` schaltet Container-Verwaltung ein (braucht `/var/run/docker.sock` und Vorlagen-Ordner unter `/vorlagen`) |
 | `ERLAUBTE_IMAGES` | weitere bekannte Image-Quellen (Präfixe), kommagetrennt |
-| `PRIVATE_FREIGABEN` | Freigaben, die nur mit Freigabe eingebunden werden, z. B. `dokumente,fotos,backups` |
+| `ERLAUBTE_FREIGABEN` | weitere Freigaben, die Container ohne Rückfrage bekommen dürfen (Standard: daten, appdata, claude) |
 | `JELLYFIN_URL` / `JELLYFIN_API_KEY` | Jellyfin-Adresse und API-Schlüssel |
 | `JELLYFIN_CONTAINER` | Name des Jellyfin-Containers, Standard `Jellyfin` |
 

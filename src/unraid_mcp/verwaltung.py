@@ -6,7 +6,7 @@ Anfrage gegen feste Regeln, die auch eine präparierte Anfrage nicht umgehen kan
 * nie privileged, Host-Netzwerk, zusätzliche Rechte (CapAdd) oder Geräte außer /dev/dri
 * Ordner nur unter /mnt/user/<freigabe>/…; nie /boot, system, ganz /mnt/user oder fremde appdata
 * Images nur aus bekannten Quellen, sonst nur mit ausdrücklicher Freigabe von Philipp
-* Tailscale/Funnel (Erreichbarkeit aus dem Internet) und private Freigaben nur mit Freigabe
+* Tailscale/Funnel, Code-Nachlade-Variablen und nicht freigegebene Freigaben nur mit Freigabe
 * unraid-mcp verändert sich nie selbst
 * jede Änderung: Sicherung (Container-Einstellungen + Unraid-Vorlage) und Protokoll mit Rückweg
 
@@ -23,6 +23,7 @@ import os
 import posixpath
 import re
 import socket
+import threading
 import time
 import urllib.parse
 import xml.etree.ElementTree as ET
@@ -32,7 +33,11 @@ from .unraid import UnraidFehler
 
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,62}$")
 VAR_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-GEHEIM_RE = re.compile(r"(PASS|KEY|TOKEN|SECRET)", re.I)
+GEHEIM_RE = re.compile(r"(PASS|PWD|KEY|TOKEN|SECRET|CRED|AUTH|DSN|COOKIE)", re.I)
+# Variablen, mit denen ein erlaubtes Image fremden Code nachladen könnte
+CODE_VARIABLEN = re.compile(r"^(DOCKER_MODS|INSTALL_\w*|LD_\w*|PATH|PYTHONPATH|PYTHONSTARTUP|NODE_OPTIONS|PERL5OPT|BASH_ENV|ENV)$", re.I)
+STEUERZEICHEN = re.compile(r"[\x00-\x1f\x7f]")
+SPERRE = threading.Lock()
 ERLAUBTE_GERAETE = {"/dev/dri"}
 GESPERRTE_FREIGABEN = {"system"}
 SELBST = "unraid-mcp"
@@ -122,6 +127,8 @@ def teile_image(image: str) -> tuple[str, str]:
     image = image.strip()
     if "@" in image:
         repo, digest = image.split("@", 1)
+        if ":" in repo.rsplit("/", 1)[-1]:
+            repo = repo.rsplit(":", 1)[0]
         return repo, digest
     letzter = image.rsplit("/", 1)[-1]
     if ":" in letzter:
@@ -160,34 +167,59 @@ def pruefe_host_pfad(s: Settings, pfad: str, container: str, freigabe: bool) -> 
         if len(teile) < 2 or teile[1].lower() != container.lower():
             raise UnraidFehler(
                 f"„{p}“ abgelehnt: Ein Container bekommt nur seinen eigenen Ordner /mnt/user/appdata/{container}.")
-    if share in {f.lower() for f in s.private_freigaben} and not freigabe:
-        raise UnraidFehler(f"„{share}“ ist eine private Freigabe: nur mit ausdrücklicher Freigabe von Philipp.")
+    if share not in {f.lower() for f in s.erlaubte_freigaben} and not freigabe:
+        raise UnraidFehler(
+            f"Freigabe „{share}“ ist nicht für Container freigegeben (erlaubt: {', '.join(s.erlaubte_freigaben)}); "
+            "nur mit ausdrücklicher Freigabe von Philipp.")
     return p
 
 
 def pruefe_ziel(ziel: str) -> str:
-    z = posixpath.normpath(ziel.strip())
+    z = posixpath.normpath("/" + ziel.strip().lstrip("/")) if ziel.strip().startswith("/") else ziel.strip()
     if not z.startswith("/") or z == "/" or z.split("/")[1] in ("proc", "sys", "dev", "etc", "bin", "usr", "lib"):
         raise UnraidFehler(f"Ziel im Container „{ziel}“ ist nicht erlaubt.")
     return z
 
 
+def pruefe_text(wert, was: str) -> str:
+    wert = str(wert)
+    if STEUERZEICHEN.search(wert):
+        raise UnraidFehler(f"{was} enthält Steuerzeichen oder Zeilenumbrüche.")
+    return wert
+
+
+def pruefe_variablen(variablen: dict, freigabe: bool) -> dict:
+    aus = {}
+    for k, wert in (variablen or {}).items():
+        pruefe_variable(k, freigabe)
+        aus[k] = pruefe_text(wert, f"Wert von {k}")
+    return aus
+
+
 def pruefe_variable(key: str, freigabe: bool) -> None:
     if not VAR_RE.match(key):
         raise UnraidFehler(f"Ungültiger Variablenname „{key}“")
+    if CODE_VARIABLEN.match(key) and not freigabe:
+        raise UnraidFehler(f"„{key}“ kann fremden Code nachladen: nur mit Philipps Freigabe.")
     if (key.upper().startswith("TS_") or "TAILSCALE" in key.upper()) and not freigabe:
         raise UnraidFehler("Tailscale/Funnel macht den Container von außen erreichbar: nur mit Philipps Freigabe.")
 
 
-def belegte_ports(d: Docker, ausser: str | None = None) -> set[int]:
+def belegte_ports(d: Docker) -> set[int]:
+    """Host-Ports aller Container, auch gestoppter (aus den Einstellungen, nicht nur laufend)."""
     belegt = set()
     for c in d.alle():
-        namen = {n.lstrip("/").lower() for n in c.get("Names") or []}
-        if ausser and ausser.lower() in namen:
-            continue
         for p in c.get("Ports") or []:
             if p.get("PublicPort"):
                 belegt.add(int(p["PublicPort"]))
+        try:
+            hc = d.inspect(c["Id"]).get("HostConfig") or {} if c.get("Id") else {}
+        except UnraidFehler:
+            continue
+        for bindungen in (hc.get("PortBindings") or {}).values():
+            for b in bindungen or []:
+                if str(b.get("HostPort") or "").isdigit():
+                    belegt.add(int(b["HostPort"]))
     return belegt
 
 
@@ -321,9 +353,14 @@ def sichern(s: Settings, name: str, insp: dict | None, vorlage: str | None) -> s
         roh.get("Config", {}).pop("Env", None)   # keine Geheimnisse im Arbeitsordner
         _schreiben(os.path.join(ordner, f"{name}-{stempel}.json"), json.dumps(roh, indent=2))
     if vorlage and os.path.exists(vorlage):
-        with open(vorlage, encoding="utf-8") as f:
-            _schreiben(os.path.join(ordner, f"{os.path.basename(vorlage)}.{stempel}"), f.read())
-    return f"{s.arbeit_dir}/protokoll/sicherung (Stand {stempel})"
+        # Vorlage enthält Geheimnisse im Klartext: Sicherung bleibt auf dem USB-Stick,
+        # außerhalb von Claudes lesbaren Ordnern.
+        ziel = os.path.join(s.vorlagen_dir, "claude-sicherung")
+        os.makedirs(ziel, exist_ok=True)
+        with open(vorlage, encoding="utf-8") as f, \
+                open(os.path.join(ziel, f"{os.path.basename(vorlage)}.{stempel}"), "w", encoding="utf-8") as g:
+            g.write(f.read())
+    return f"Einstellungen: {s.arbeit_dir}/protokoll/sicherung, Unraid-Vorlage: templates-user/claude-sicherung (Stand {stempel})"
 
 
 # ---------------------------------------------------------------- Container-Konfiguration
@@ -359,14 +396,41 @@ KOPIER_FELDER = ("Image", "Env", "Cmd", "Entrypoint", "Labels", "ExposedPorts", 
                  "Volumes", "Domainname")
 
 
-def body_aus_inspect(insp: dict, ports=(), ordner=(), variablen=None, geraete=()) -> dict:
+def nur_abweichungen(cfg: dict, img: dict | None) -> dict:
+    """Nur was der Container gegenüber den Standardwerten seines Images selbst gesetzt hat.
+    So bekommt ein aktualisiertes Image seine neuen Standardwerte (Env, Entrypoint, Labels …)."""
+    if img is None:
+        return {k: copy.deepcopy(cfg[k]) for k in KOPIER_FELDER if cfg.get(k) is not None}
+    body = {"Image": cfg.get("Image")}
+    env = [e for e in cfg.get("Env") or [] if e not in set(img.get("Env") or [])]
+    if env:
+        body["Env"] = env
+    labels = {k: v for k, v in (cfg.get("Labels") or {}).items() if (img.get("Labels") or {}).get(k) != v}
+    if labels:
+        body["Labels"] = labels
+    for k in ("ExposedPorts", "Volumes"):
+        extra = {x: {} for x in (cfg.get(k) or {}) if x not in (img.get(k) or {})}
+        if extra:
+            body[k] = extra
+    for k in ("Cmd", "Entrypoint", "WorkingDir", "User", "Healthcheck", "StopSignal", "StopTimeout",
+              "Domainname"):
+        if cfg.get(k) not in (None, "", []) and cfg.get(k) != img.get(k):
+            body[k] = copy.deepcopy(cfg[k])
+    for k in ("Tty", "OpenStdin", "StdinOnce"):
+        if cfg.get(k):
+            body[k] = True
+    return body
+
+
+def body_aus_inspect(insp: dict, ports=(), ordner=(), variablen=None, geraete=(), image_cfg=None) -> dict:
     """Baut die Einstellungen eines bestehenden Containers nach und fügt Änderungen hinzu."""
     cfg, hc = insp.get("Config") or {}, copy.deepcopy(insp.get("HostConfig") or {})
-    body = {k: copy.deepcopy(cfg[k]) for k in KOPIER_FELDER if cfg.get(k) is not None}
+    body = nur_abweichungen(cfg, image_cfg)
     if cfg.get("Hostname") and not (insp.get("Id") or "").startswith(cfg["Hostname"]):
         body["Hostname"] = cfg["Hostname"]
     binds = list(hc.get("Binds") or [])
-    ziele = {b.split(":")[1] for b in binds if ":" in b}
+    ziele = {b.split(":")[1] for b in binds if ":" in b} | {
+        m.get("Target") for m in hc.get("Mounts") or []}
     for m in insp.get("Mounts") or []:   # anonyme Volumes (z. B. Jellyfin /cache) mitnehmen
         if m.get("Type") == "volume" and m.get("Name") and m.get("Destination") not in ziele:
             binds.append(f"{m['Name']}:{m['Destination']}")
@@ -423,7 +487,7 @@ def _warte_laeuft(d: Docker, cid: str, sekunden: int = 30) -> dict:
     while True:
         insp = d.inspect(cid)
         st = insp.get("State") or {}
-        if st.get("Running") and not st.get("Restarting"):
+        if st.get("Running") and not st.get("Restarting") and not insp.get("RestartCount"):
             laeuft_seit = laeuft_seit or time.time()
             if time.time() - laeuft_seit >= STABIL_SEKUNDEN:
                 return insp
@@ -431,14 +495,14 @@ def _warte_laeuft(d: Docker, cid: str, sekunden: int = 30) -> dict:
             laeuft_seit = None
             if st.get("Status") in ("exited", "dead"):
                 raise UnraidFehler(f"Container startet nicht (Status {st.get('Status')}, Exit {st.get('ExitCode')}).")
+        if st.get("Restarting") or insp.get("RestartCount"):
+            raise UnraidFehler("Container startet ständig neu (Absturzschleife).")
         if time.time() - beginn > sekunden:
-            if st.get("Running"):
-                return insp
             raise UnraidFehler(f"Container läuft nach {sekunden} s nicht (Status {st.get('Status')}).")
         time.sleep(1)
 
 
-def anlegen(s: Settings, name: str, image: str, ports: list[dict], ordner: list[dict],
+def _anlegen(s: Settings, name: str, image: str, ports: list[dict], ordner: list[dict],
             variablen: dict, geraete: list[str], webui_port: int | None, beschreibung: str,
             freigabe: bool) -> dict:
     d = _docker(s)
@@ -453,8 +517,8 @@ def anlegen(s: Settings, name: str, image: str, ports: list[dict], ordner: list[
         raise UnraidFehler(
             f"Image „{image}“ stammt aus keiner bekannten Quelle ({', '.join(s.erlaubte_images)}). "
             "Erst prüfen und Philipp fragen; nur mit seiner ausdrücklichen Freigabe anlegen.")
-    for k in variablen:
-        pruefe_variable(k, freigabe)
+    variablen = pruefe_variablen(variablen, freigabe)
+    beschreibung = pruefe_text(beschreibung, "Beschreibung")
     ports = pruefe_ports(ports, belegte_ports(d))
     ordner = pruefe_ordner(s, ordner, name, freigabe)
     geraete = pruefe_geraete(geraete)
@@ -479,50 +543,82 @@ def anlegen(s: Settings, name: str, image: str, ports: list[dict], ordner: list[
 
 
 def neu_erstellen(s: Settings, d: Docker, insp: dict, body: dict) -> dict:
-    """Ersetzt einen Container durch einen neuen mit `body`; bei Fehlern zurück zum alten."""
+    """Ersetzt einen Container durch einen neuen mit `body`; bei jedem Fehler zurück zum alten.
+    Ein gestoppter Container bleibt gestoppt."""
     name = (insp.get("Name") or "").lstrip("/")
     alt_id = insp["Id"]
     lief = bool((insp.get("State") or {}).get("Running"))
     zwischen = f"{name}-alt-{_jetzt()}"
-    d.stop(alt_id)
-    d.rename(alt_id, zwischen)
+    schritte = []          # was schon passiert ist, für den Rückweg
     neu_id = None
     try:
+        if lief:
+            d.stop(alt_id)
+            schritte.append("gestoppt")
+        d.rename(alt_id, zwischen)
+        schritte.append("umbenannt")
         neu_id = d.create(name, body)
-        d.start(neu_id)
-        neu = _warte_laeuft(d, neu_id)
-    except UnraidFehler as e:
+        if lief:
+            d.start(neu_id)
+            neu = _warte_laeuft(d, neu_id)
+        else:
+            neu = d.inspect(neu_id)
+    except Exception as e:   # noqa: BLE001 – jeder Fehler führt zum Rückweg
+        probleme = []
         if neu_id:
             try:
                 d.remove(neu_id)
-            except UnraidFehler:
-                pass
-        d.rename(alt_id, name)
-        if lief:
-            d.start(alt_id)
+            except Exception as x:  # noqa: BLE001
+                probleme.append(f"neuen Container entfernen: {x}")
+        if "umbenannt" in schritte:
+            try:
+                d.rename(alt_id, name)
+            except Exception as x:  # noqa: BLE001
+                probleme.append(f"zurückbenennen: {x}")
+        if "gestoppt" in schritte:
+            try:
+                d.start(alt_id)
+            except Exception as x:  # noqa: BLE001
+                probleme.append(f"alten Container starten: {x}")
+        if probleme:
+            raise UnraidFehler(
+                f"Änderung fehlgeschlagen ({e}) UND Rückweg unvollständig: {'; '.join(probleme)}. "
+                f"Der alte Container heißt evtl. „{zwischen}“: in Unraid in „{name}“ umbenennen und starten."
+            ) from e
         raise UnraidFehler(f"Änderung fehlgeschlagen, alter Zustand wiederhergestellt: {e}") from e
     d.remove(alt_id)   # nur der Container; Volumes und Ordner bleiben
     return neu
 
 
-def aendern(s: Settings, name: str, ports: list[dict], ordner: list[dict], variablen: dict,
+def _pruefe_geschuetzt(s: Settings, name: str) -> None:
+    if name.lower() == SELBST or name.lower() in {g.lower() for g in s.geschuetzte_container}:
+        raise UnraidFehler(f"„{name}“ ist geschützt und wird von Claude nicht verändert; das macht Philipp in Unraid.")
+
+
+def _image_cfg(d: Docker, insp: dict) -> dict | None:
+    try:
+        cfg = d._req("GET", f"/images/{insp.get('Image')}/json")
+        return (cfg.get("Config") or {}) if isinstance(cfg, dict) else None
+    except Exception:  # noqa: BLE001 – ohne Image-Infos alles übernehmen (sicherer Rückfall)
+        return None
+
+
+def _aendern(s: Settings, name: str, ports: list[dict], ordner: list[dict], variablen: dict,
             geraete: list[str], freigabe: bool) -> dict:
     d = _docker(s)
     insp = d.inspect(name)
     echt = (insp.get("Name") or "").lstrip("/")
-    if echt.lower() == SELBST:
-        raise UnraidFehler("unraid-mcp verändert sich nicht selbst; das macht Philipp in Unraid.")
+    _pruefe_geschuetzt(s, echt)
     if not (ports or ordner or variablen or geraete):
         raise UnraidFehler("Keine Änderung angegeben.")
-    for k in variablen:
-        pruefe_variable(k, freigabe)
-    ports = pruefe_ports(ports, belegte_ports(d, ausser=echt))
+    variablen = pruefe_variablen(variablen, freigabe)
+    ports = pruefe_ports(ports, belegte_ports(d))   # inkl. der eigenen bisherigen Ports
     ordner = pruefe_ordner(s, ordner, echt, freigabe)
     geraete = pruefe_geraete(geraete)
 
     vorlage = vorlagen_pfad(s, echt)
     sicherung = sichern(s, echt, insp, vorlage)
-    body = body_aus_inspect(insp, ports, ordner, variablen, geraete)
+    body = body_aus_inspect(insp, ports, ordner, variablen, geraete, _image_cfg(d, insp))
     neu = neu_erstellen(s, d, insp, body)
     if vorlage:
         with open(vorlage, encoding="utf-8") as f:
@@ -539,20 +635,20 @@ def aendern(s: Settings, name: str, ports: list[dict], ordner: list[dict], varia
             "sicherung": sicherung}
 
 
-def aktualisieren(s: Settings, name: str) -> dict:
+def _aktualisieren(s: Settings, name: str) -> dict:
     d = _docker(s)
     insp = d.inspect(name)
     echt = (insp.get("Name") or "").lstrip("/")
-    if echt.lower() == SELBST:
-        raise UnraidFehler("unraid-mcp aktualisiert sich nicht selbst; das macht Philipp per Force Update.")
+    _pruefe_geschuetzt(s, echt)
     image = (insp.get("Config") or {}).get("Image")
     alt_image_id = insp.get("Image")
     d.pull(image)
     neu_image_id = d._req("GET", f"/images/{urllib.parse.quote(image, safe='/:')}/json").get("Id")
     if neu_image_id == alt_image_id:
         return {"container": echt, "ergebnis": "schon aktuell", "image": image}
+    alt_cfg = _image_cfg(d, insp)   # Standardwerte des ALTEN Images, damit die neuen greifen
     sicherung = sichern(s, echt, insp, vorlagen_pfad(s, echt))
-    neu = neu_erstellen(s, d, insp, body_aus_inspect(insp))
+    neu = neu_erstellen(s, d, insp, body_aus_inspect(insp, image_cfg=alt_cfg))
     protokollieren(s, "aktualisiert", echt, f"Image {image} neu geladen. Sicherung: {sicherung}.")
     return {"container": echt, "ergebnis": "aktualisiert", "image": image,
             "status": (neu.get("State") or {}).get("Status")}
@@ -575,3 +671,18 @@ def details(s: Settings, name: str) -> dict:
         "variablen": _ohne_geheimnisse(env),
         "unraid_vorlage": os.path.basename(vorlagen_pfad(s, (insp.get("Name") or "").lstrip("/")) or "") or None,
     }
+
+
+def anlegen(*a, **k):
+    with SPERRE:
+        return _anlegen(*a, **k)
+
+
+def aendern(*a, **k):
+    with SPERRE:
+        return _aendern(*a, **k)
+
+
+def aktualisieren(*a, **k):
+    with SPERRE:
+        return _aktualisieren(*a, **k)

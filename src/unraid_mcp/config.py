@@ -35,7 +35,7 @@ class Settings:
     erlaubte_images: tuple[str, ...] = (
         "lscr.io/linuxserver/", "linuxserver/", "jellyfin/", "ghcr.io/jellyfin/", "ghcr.io/bestoug/",
         "library/")
-    private_freigaben: tuple[str, ...] = ()    # z. B. dokumente, fotos, backups
+    erlaubte_freigaben: tuple[str, ...] = ("daten", "appdata", "claude")  # andere nur mit Freigabe
     jellyfin_url: str = ""
     jellyfin_api_key: str = ""
     jellyfin_container: str = "Jellyfin"
@@ -68,7 +68,7 @@ class Settings:
             docker_socket=os.environ.get("DOCKER_SOCKET", "/var/run/docker.sock"),
             vorlagen_dir=os.environ.get("VORLAGEN_ORDNER", "/vorlagen"),
             erlaubte_images=cls.erlaubte_images + _liste("ERLAUBTE_IMAGES"),
-            private_freigaben=_liste("PRIVATE_FREIGABEN"),
+            erlaubte_freigaben=cls.erlaubte_freigaben + _liste("ERLAUBTE_FREIGABEN"),
             jellyfin_url=os.environ.get("JELLYFIN_URL", "").strip(),
             jellyfin_api_key=os.environ.get("JELLYFIN_API_KEY", "").strip(),
             jellyfin_container=os.environ.get("JELLYFIN_CONTAINER", "Jellyfin").strip(),
