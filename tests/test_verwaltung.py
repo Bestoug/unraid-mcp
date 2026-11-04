@@ -301,3 +301,22 @@ def test_teile_image_mit_tag_und_digest():
     assert v.teile_image("jellyfin/jellyfin:10.10@sha256:abc") == ("jellyfin/jellyfin", "sha256:abc")
     with pytest.raises(UnraidFehler):
         v.pruefe_ziel("//etc")
+
+
+def test_runde2():
+    with pytest.raises(UnraidFehler):
+        v.pruefe_variable("FOO\n", False)
+    with pytest.raises(UnraidFehler):
+        v.pruefe_name("abc\n")
+    with pytest.raises(UnraidFehler):
+        v.pruefe_ordner(Settings(unraid_url="http://x/graphql", unraid_api_key="k", access_token="t" * 40),
+                        [{"host": "/mnt/user/daten/a\x01b", "container": "/x"}], "c", False)
+
+
+def test_aktualisieren_ohne_altes_image(tmp_path, monkeypatch):
+    d = FakeDocker()
+    monkeypatch.setattr(v, "_docker", lambda s: d)
+    monkeypatch.setattr(v, "_image_cfg", lambda d, i: None)
+    d._req = lambda *a, **k: {"Id": "sha256:neu"}
+    with pytest.raises(UnraidFehler, match="force update"):
+        v.aktualisieren(S(tmp_path), "Jellyfin")

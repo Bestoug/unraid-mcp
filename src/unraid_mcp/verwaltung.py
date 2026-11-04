@@ -148,7 +148,7 @@ def image_bekannt(s: Settings, image: str) -> bool:
 
 
 def pruefe_name(name: str) -> str:
-    if not NAME_RE.match(name or ""):
+    if not NAME_RE.fullmatch(name or ""):
         raise UnraidFehler(f"Ungültiger Container-Name „{name}“ (Buchstaben, Ziffern, - _ .)")
     return name
 
@@ -197,7 +197,7 @@ def pruefe_variablen(variablen: dict, freigabe: bool) -> dict:
 
 
 def pruefe_variable(key: str, freigabe: bool) -> None:
-    if not VAR_RE.match(key):
+    if not VAR_RE.fullmatch(key):
         raise UnraidFehler(f"Ungültiger Variablenname „{key}“")
     if CODE_VARIABLEN.match(key) and not freigabe:
         raise UnraidFehler(f"„{key}“ kann fremden Code nachladen: nur mit Philipps Freigabe.")
@@ -242,6 +242,8 @@ def pruefe_ports(ports: list[dict], belegt: set[int]) -> list[dict]:
 def pruefe_ordner(s: Settings, ordner: list[dict], container: str, freigabe: bool) -> list[dict]:
     aus = []
     for o in ordner:
+        pruefe_text(o["host"], "Ordner")
+        pruefe_text(o["container"], "Ziel im Container")
         host = pruefe_host_pfad(s, o["host"], container, freigabe)
         if host == "/dev/dri":
             raise UnraidFehler("/dev/dri gehört unter „geraete“, nicht unter „ordner“.")
@@ -519,6 +521,7 @@ def _anlegen(s: Settings, name: str, image: str, ports: list[dict], ordner: list
             "Erst prüfen und Philipp fragen; nur mit seiner ausdrücklichen Freigabe anlegen.")
     variablen = pruefe_variablen(variablen, freigabe)
     beschreibung = pruefe_text(beschreibung, "Beschreibung")
+    image = pruefe_text(image, "Image")
     ports = pruefe_ports(ports, belegte_ports(d))
     ordner = pruefe_ordner(s, ordner, name, freigabe)
     geraete = pruefe_geraete(geraete)
@@ -530,8 +533,12 @@ def _anlegen(s: Settings, name: str, image: str, ports: list[dict], ordner: list
     try:
         d.start(cid)
         insp = _warte_laeuft(d, cid)
-    except UnraidFehler as e:
-        d.remove(cid)   # neuer, leerer Container: keine Daten betroffen
+    except Exception as e:  # noqa: BLE001
+        try:
+            d.remove(cid)   # neuer, leerer Container: keine Daten betroffen
+        except Exception as x:  # noqa: BLE001
+            raise UnraidFehler(f"Container „{name}“ startet nicht ({e}) und ließ sich nicht entfernen ({x}); "
+                               "bitte in Unraid entfernen.") from e
         raise UnraidFehler(f"Container „{name}“ wurde nicht angelegt: {e}") from e
     _schreiben(vorlage, xml)
     protokollieren(s, "angelegt", name,
@@ -553,8 +560,8 @@ def neu_erstellen(s: Settings, d: Docker, insp: dict, body: dict) -> dict:
     neu_id = None
     try:
         if lief:
+            schritte.append("gestoppt")   # vorher eintragen: auch ein halb geglückter Stopp wird zurückgenommen
             d.stop(alt_id)
-            schritte.append("gestoppt")
         d.rename(alt_id, zwischen)
         schritte.append("umbenannt")
         neu_id = d.create(name, body)
@@ -647,6 +654,10 @@ def _aktualisieren(s: Settings, name: str) -> dict:
     if neu_image_id == alt_image_id:
         return {"container": echt, "ergebnis": "schon aktuell", "image": image}
     alt_cfg = _image_cfg(d, insp)   # Standardwerte des ALTEN Images, damit die neuen greifen
+    if alt_cfg is None:
+        raise UnraidFehler(
+            "Die Einstellungen des bisherigen Images sind nicht mehr lesbar (Image gelöscht?). "
+            "Sicherer Weg: in Unraid bei diesem Container „force update“.")
     sicherung = sichern(s, echt, insp, vorlagen_pfad(s, echt))
     neu = neu_erstellen(s, d, insp, body_aus_inspect(insp, image_cfg=alt_cfg))
     protokollieren(s, "aktualisiert", echt, f"Image {image} neu geladen. Sicherung: {sicherung}.")
