@@ -16,6 +16,10 @@ def _flag(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in ("1", "true", "ja")
 
 
+def _liste(name: str) -> tuple[str, ...]:
+    return tuple(x.strip() for x in os.environ.get(name, "").split(",") if x.strip())
+
+
 @dataclass(frozen=True)
 class Settings:
     unraid_url: str               # z. B. http://192.168.2.113/graphql
@@ -25,6 +29,16 @@ class Settings:
     lese_dirs: tuple[str, ...] = ("/daten",)   # nur lesend eingebundene Ordner
     container_steuern: bool = True             # Start/Stopp/Neustart von Containern erlauben
     geschuetzte_container: tuple[str, ...] = ("unraid-mcp",)  # nie anhalten (sonst sägt Claude den Ast ab)
+    verwaltung: bool = False                   # Container anlegen/ändern (braucht Docker-Socket)
+    docker_socket: str = "/var/run/docker.sock"
+    vorlagen_dir: str = "/vorlagen"            # = /boot/config/plugins/dockerMan/templates-user
+    erlaubte_images: tuple[str, ...] = (
+        "lscr.io/linuxserver/", "linuxserver/", "jellyfin/", "ghcr.io/jellyfin/", "ghcr.io/bestoug/",
+        "library/")
+    private_freigaben: tuple[str, ...] = ()    # z. B. dokumente, fotos, backups
+    jellyfin_url: str = ""
+    jellyfin_api_key: str = ""
+    jellyfin_container: str = "Jellyfin"
     verify_ssl: bool = True
     timeout: float = 20.0
     host: str = "0.0.0.0"
@@ -50,6 +64,14 @@ class Settings:
             lese_dirs=lese,
             container_steuern=not _flag("CONTAINER_NUR_LESEN"),
             geschuetzte_container=tuple(sorted(geschuetzt)),
+            verwaltung=_flag("VERWALTUNG"),
+            docker_socket=os.environ.get("DOCKER_SOCKET", "/var/run/docker.sock"),
+            vorlagen_dir=os.environ.get("VORLAGEN_ORDNER", "/vorlagen"),
+            erlaubte_images=cls.erlaubte_images + _liste("ERLAUBTE_IMAGES"),
+            private_freigaben=_liste("PRIVATE_FREIGABEN"),
+            jellyfin_url=os.environ.get("JELLYFIN_URL", "").strip(),
+            jellyfin_api_key=os.environ.get("JELLYFIN_API_KEY", "").strip(),
+            jellyfin_container=os.environ.get("JELLYFIN_CONTAINER", "Jellyfin").strip(),
             verify_ssl=not _flag("UNRAID_SSL_IGNORIEREN"),
             port=int(os.environ.get("PORT", "8000")),
         )

@@ -63,6 +63,21 @@ def lesen(s: Settings, pfad: str) -> dict:
             "abgeschnitten": len(roh) > MAX_LESEN}
 
 
+def _eigentuemer(p: Path, wurzel: str) -> None:
+    """Läuft der Server als root (Verwaltung), gehören neue Dateien trotzdem nobody:users."""
+    import os
+    if not (hasattr(os, "geteuid") and os.geteuid() == 0):
+        return
+    w = Path(wurzel).resolve()
+    for q in [p, *p.parents]:
+        if q == w or w not in q.parents:
+            break
+        try:
+            os.chown(q, 99, 100)
+        except OSError:
+            pass
+
+
 def schreiben(s: Settings, pfad: str, inhalt: str, anhaengen: bool = False) -> dict:
     daten = inhalt.encode("utf-8")
     if len(daten) > MAX_SCHREIBEN:
@@ -73,12 +88,14 @@ def schreiben(s: Settings, pfad: str, inhalt: str, anhaengen: bool = False) -> d
     p.parent.mkdir(parents=True, exist_ok=True)
     with p.open("ab" if anhaengen else "wb") as f:
         f.write(daten)
+    _eigentuemer(p, s.arbeit_dir)
     return {"pfad": str(p), "bytes": len(daten), "angehaengt": anhaengen}
 
 
 def ordner_anlegen(s: Settings, pfad: str) -> dict:
     p = aufloesen(s, pfad, schreiben=True)
     p.mkdir(parents=True, exist_ok=True)
+    _eigentuemer(p, s.arbeit_dir)
     return {"pfad": str(p)}
 
 
