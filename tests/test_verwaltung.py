@@ -320,3 +320,52 @@ def test_aktualisieren_ohne_altes_image(tmp_path, monkeypatch):
     d._req = lambda *a, **k: {"Id": "sha256:neu"}
     with pytest.raises(UnraidFehler, match="force update"):
         v.aktualisieren(S(tmp_path), "Jellyfin")
+
+
+# ---------- 0.2.1: Ordner ersetzen, Geräteanzeige ----------
+
+def test_cache_volume_ersetzen():
+    insp = json.loads(json.dumps(JELLYFIN))
+    insp["HostConfig"]["Devices"] = [{"PathOnHost": "/dev/dri", "PathInContainer": "/dev/dri", "CgroupPermissions": "rwm"}]
+    neu = {"host": "/mnt/user/appdata/Jellyfin/cache", "container": "/cache", "nur_lesen": False, "ersetzen": True}
+    body = v.body_aus_inspect(insp, ordner=[neu], geraete=["/dev/dri"])
+    binds = body["HostConfig"]["Binds"]
+    assert "/mnt/user/appdata/Jellyfin/cache:/cache:rw" in binds
+    assert not any(b.startswith("9842abc:") for b in binds)          # anonymes Volume nicht mehr eingebunden
+    assert "/mnt/user/appdata/Jellyfin:/config:rw" in binds            # Rest bleibt
+    assert body["HostConfig"]["Devices"] == insp["HostConfig"]["Devices"]  # /dev/dri bleibt, nicht doppelt
+    with pytest.raises(UnraidFehler, match="ersetzen"):
+        v.body_aus_inspect(insp, ordner=[{**neu, "ersetzen": False}])
+
+
+def test_ersetzen_regeln_bleiben(tmp_path):
+    s = S(tmp_path)
+    with pytest.raises(UnraidFehler):   # fremde appdata auch beim Ersetzen verboten
+        v.pruefe_ordner(s, [{"host": "/mnt/user/appdata/icloud-mcp", "container": "/cache", "ersetzen": True}],
+                        "Jellyfin", False)
+    o = v.pruefe_ordner(s, [{"host": "/mnt/user/appdata/Jellyfin/cache", "container": "/cache", "ersetzen": True}],
+                        "Jellyfin", False)
+    assert o[0]["ersetzen"] is True
+
+
+def test_vorlage_ersetzt_pfad_statt_doppelt():
+    xml = ('<?xml version="1.0"?><Container version="2"><Name>Jellyfin</Name>'
+           '<Config Name="Cache" Target="/cache" Type="Path" Mode="rw">/alt</Config>'
+           '<Config Name="GPU" Target="" Type="Device">/dev/dri</Config></Container>')
+    neu = ET.fromstring(v.vorlage_ergaenzen(xml, [], [{"host": "/mnt/user/appdata/Jellyfin/cache",
+                                                        "container": "/cache", "nur_lesen": False}], {}, ["/dev/dri"]))
+    pfade = [c.text for c in neu.findall("Config") if c.get("Target") == "/cache"]
+    assert pfade == ["/mnt/user/appdata/Jellyfin/cache"]
+    assert len([c for c in neu.findall("Config") if c.get("Type") == "Device"]) == 1
+
+
+def test_details_zeigt_geraete(tmp_path, monkeypatch):
+    insp = json.loads(json.dumps(JELLYFIN))
+    insp["HostConfig"]["Devices"] = [{"PathOnHost": "/dev/dri", "PathInContainer": "/dev/dri"}]
+
+    class D:
+        def inspect(self, n):
+            return insp
+    monkeypatch.setattr(v, "_docker", lambda s: D())
+    r = v.details(S(tmp_path), "Jellyfin")
+    assert r["geraete"] == ["/dev/dri"] and r["benutzer"] == "root"

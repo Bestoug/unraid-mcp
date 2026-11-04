@@ -248,7 +248,8 @@ def pruefe_ordner(s: Settings, ordner: list[dict], container: str, freigabe: boo
         if host == "/dev/dri":
             raise UnraidFehler("/dev/dri gehört unter „geraete“, nicht unter „ordner“.")
         aus.append({"host": host, "container": pruefe_ziel(o["container"]),
-                    "nur_lesen": bool(o.get("nur_lesen", False))})
+                    "nur_lesen": bool(o.get("nur_lesen", False)),
+                    "ersetzen": bool(o.get("ersetzen", False))})
     return aus
 
 
@@ -312,11 +313,18 @@ def vorlage_ergaenzen(xml: str, ports, ordner, variablen, geraete) -> str:
         else:
             _config(root, k, k, "Variable", v, maske=bool(GEHEIM_RE.search(k)))
     for o in ordner:
-        _config(root, o["container"], o["container"], "Path", o["host"], "ro" if o["nur_lesen"] else "rw")
+        modus = "ro" if o["nur_lesen"] else "rw"
+        vorhanden = [c for c in configs if c.get("Type") == "Path" and c.get("Target") == o["container"]]
+        if vorhanden:            # ersetzter Ordner: bestehenden Eintrag umschreiben, nicht verdoppeln
+            vorhanden[0].text, vorhanden[0].attrib["Mode"] = o["host"], modus
+        else:
+            _config(root, o["container"], o["container"], "Path", o["host"], modus)
     for p in ports:
         _config(root, f"Port {p['container']}", p["container"], "Port", p["host"], p["protokoll"])
+    schon = {(c.text or "").strip() for c in configs if c.get("Type") == "Device"}
     for g in geraete:
-        _config(root, g, "", "Device", g)
+        if g not in schon:
+            _config(root, g, "", "Device", g)
     ET.indent(root)
     return '<?xml version="1.0"?>\n' + ET.tostring(root, encoding="unicode") + "\n"
 
@@ -439,9 +447,17 @@ def body_aus_inspect(insp: dict, ports=(), ordner=(), variablen=None, geraete=()
             ziele.add(m["Destination"])
     for o in ordner:
         if o["container"] in ziele:
-            raise UnraidFehler(f"Im Container ist „{o['container']}“ schon belegt.")
+            if not o.get("ersetzen"):
+                raise UnraidFehler(f"Im Container ist „{o['container']}“ schon belegt "
+                                   "(zum Austauschen \"ersetzen\": true angeben).")
+            # bisherigen Ordner/Volume an diesem Ziel austauschen; das alte Volume bleibt erhalten
+            binds = [b for b in binds if not (":" in b and b.split(":")[1] == o["container"])]
+            hc["Mounts"] = [m for m in hc.get("Mounts") or [] if m.get("Target") != o["container"]] or None
         binds.append(_bind(o))
+        ziele.add(o["container"])
     hc["Binds"] = binds
+    if hc.get("Mounts") is None:
+        hc.pop("Mounts", None)
     env = list(body.get("Env") or [])
     for k, v in (variablen or {}).items():
         env = [e for e in env if not e.startswith(f"{k}=")] + [f"{k}={v}"]
@@ -455,8 +471,9 @@ def body_aus_inspect(insp: dict, ports=(), ordner=(), variablen=None, geraete=()
             body["ExposedPorts"][key] = {}
             hc["PortBindings"].setdefault(key, []).append({"HostIp": "", "HostPort": str(p["host"])})
     if geraete:
+        schon = {x.get("PathOnHost") for x in hc.get("Devices") or []}
         hc["Devices"] = (hc.get("Devices") or []) + [
-            {"PathOnHost": g, "PathInContainer": g, "CgroupPermissions": "rwm"} for g in geraete]
+            {"PathOnHost": g, "PathInContainer": g, "CgroupPermissions": "rwm"} for g in geraete if g not in schon]
     body["HostConfig"] = hc
     mode = hc.get("NetworkMode") or "bridge"
     if mode not in ("bridge", "host", "none", "default") and not mode.startswith("container:"):
@@ -632,7 +649,7 @@ def _aendern(s: Settings, name: str, ports: list[dict], ordner: list[dict], vari
             xml = f.read()
         _schreiben(vorlage, vorlage_ergaenzen(xml, ports, ordner, variablen, geraete))
     protokollieren(s, "geändert", echt,
-                   f"neue Ordner {[o['host'] + '→' + o['container'] for o in ordner]}, "
+                   f"Ordner {[o['host'] + '→' + o['container'] + (' (ersetzt)' if o.get('ersetzen') else '') for o in ordner]}, "
                    f"Ports {[p['host'] for p in ports]}, Variablen {list(variablen)}, Geräte {geraete}. "
                    f"Rückweg: Sicherung in {sicherung}.")
     return {"container": echt, "status": (neu.get("State") or {}).get("Status"),
@@ -679,6 +696,8 @@ def details(s: Settings, name: str) -> dict:
         "ordner": [{"host": m.get("Source") or m.get("Name"), "container": m.get("Destination"),
                     "nur_lesen": not m.get("RW", True), "typ": m.get("Type")} for m in insp.get("Mounts") or []],
         "ports": hc.get("PortBindings"), "netzwerk": hc.get("NetworkMode"),
+        "geraete": [x.get("PathOnHost") for x in hc.get("Devices") or []],
+        "benutzer": (insp.get("Config") or {}).get("User") or "root",
         "variablen": _ohne_geheimnisse(env),
         "unraid_vorlage": os.path.basename(vorlagen_pfad(s, (insp.get("Name") or "").lstrip("/")) or "") or None,
     }

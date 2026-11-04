@@ -193,7 +193,7 @@ def build_server(s: Settings) -> FastMCP:
 
     @mcp.tool(annotations={**READ, "title": "Container-Details"})
     async def container_details(container: str) -> dict:
-        """Ordner, Ports, Netzwerk, Variablen (Geheimnisse ausgeblendet) und Unraid-Vorlage eines Containers."""
+        """Ordner, Ports, Netzwerk, Geräte (z. B. /dev/dri), Benutzer, Variablen (Geheimnisse ausgeblendet) und Unraid-Vorlage eines Containers."""
         return await run(verwaltung.details, s, container)
 
     @mcp.tool(annotations={**WRITE, "title": "Container anlegen"})
@@ -219,13 +219,13 @@ def build_server(s: Settings) -> FastMCP:
     @mcp.tool(annotations={**WRITE, "title": "Container ändern"})
     async def container_aendern(
         container: str,
-        neue_ordner: Annotated[list[dict], Field(description='[{"host": "/mnt/user/daten/Musik", "container": "/data/music", "nur_lesen": true}]')] = [],
+        neue_ordner: Annotated[list[dict], Field(description='[{"host": "/mnt/user/daten/Musik", "container": "/data/music", "nur_lesen": true}]; mit "ersetzen": true wird ein schon belegtes Ziel (z. B. /cache) ausgetauscht')] = [],
         neue_ports: list[dict] = [],
         variablen: Annotated[dict, Field(description="neue oder geänderte Variablen")] = {},
         geraete: list[str] = [],
         freigabe_philipp: bool = False,
     ) -> dict:
-        """Fügt einem bestehenden Container Ordner, Ports, Variablen oder /dev/dri hinzu.
+        """Fügt einem bestehenden Container Ordner, Ports, Variablen oder /dev/dri hinzu oder tauscht einen Ordner aus.
         Der Container wird dafür neu erstellt (kurz offline); Daten bleiben, bei Fehlern wird der
         alte Zustand wiederhergestellt; Unraid-Vorlage wird mitgepflegt, Sicherung im Arbeitsordner."""
         protokoll("container_aendern", container=container, ordner=neue_ordner, ports=neue_ports,
