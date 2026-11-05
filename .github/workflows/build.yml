@@ -3,7 +3,9 @@ name: Test und Docker-Image
 on:
   push:
     branches: [main]
+    paths-ignore: ["leitstand-sync/**", ".github/workflows/leitstand-sync.yml"]
   pull_request:
+    paths-ignore: ["leitstand-sync/**"]
   workflow_dispatch:
 
 permissions:

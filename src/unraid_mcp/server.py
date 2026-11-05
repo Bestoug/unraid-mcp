@@ -141,7 +141,7 @@ def build_server(s: Settings) -> FastMCP:
         aktion: Literal["start", "stop", "restart"],
     ) -> dict:
         """Startet, stoppt oder startet einen Container neu. unraid-mcp selbst ist geschützt."""
-        protokoll("docker_action", container=container, aktion=aktion)
+        protokoll("docker_action", container=container, befehl=aktion)
         return await run(unraid.container_aktion, s, container, aktion)
 
     # ---------- Dateien ----------
