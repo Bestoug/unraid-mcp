@@ -138,6 +138,36 @@ table.plain th{color:var(--dim);font-weight:500;border-top:0}
 .entry{border-left:2px solid var(--line);padding:0 0 18px 16px;position:relative}
 .entry::before{content:"";position:absolute;left:-6px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--glow);box-shadow:0 0 8px var(--glow)}
 
+/* Struktur (Organigramm) */
+.org{display:flex;flex-direction:column;align-items:center}
+.org-line{width:2px;height:24px;background:linear-gradient(var(--glow),var(--glow-dim));box-shadow:0 0 8px rgba(92,225,255,.5)}
+.node{display:grid;grid-template-columns:46px 1fr;gap:12px;align-items:center;width:min(100%,380px);padding:12px 14px}
+.node .avatar{width:46px;height:46px;font-size:.9rem}
+.node .name{font-weight:600}
+.node .role{color:var(--glow);font-size:.82rem;letter-spacing:.03em}
+.node .job{color:var(--dim);font-size:.86rem;line-height:1.35;margin-top:2px}
+.node.chef .avatar{background:radial-gradient(circle at 35% 30%,#fff1d6,var(--amber) 55%,#8a5a12);box-shadow:0 0 16px rgba(255,181,71,.5)}
+.node.chef{border-color:#8a6a2a}
+.org-branches{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px;border-top:2px solid var(--glow-dim);padding-top:22px;margin-top:0;position:relative}
+.branch{position:relative;display:flex;flex-direction:column;gap:10px}
+.branch.ruht{opacity:.55}
+.bhead{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+.bhead h3{margin:0;font-size:1rem;color:#E6F7FF}
+.bzweck{color:var(--dim);font-size:.85rem;margin-top:-4px}
+.mini{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--line)}
+.mini .avatar{width:34px;height:34px;font-size:.72rem;box-shadow:0 0 8px rgba(92,225,255,.3)}
+.mini.lead .avatar{outline:2px solid var(--glow);outline-offset:2px}
+.mini .name{font-weight:600;font-size:.92rem}
+.mini .name small{color:var(--glow);font-weight:400;margin-left:6px;font-size:.78rem}
+.mini .job{color:var(--dim);font-size:.82rem;line-height:1.35}
+.org-sub{width:100%;margin-top:30px}
+.org-sub>h3{color:var(--dim);font-weight:500;font-size:.9rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.sealed{border-style:dashed}
+.sealed .lock{color:var(--amber);font-size:.8rem;letter-spacing:.05em}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:6px 10px;border:1px solid var(--line);border-radius:16px;font-size:.85rem;background:rgba(92,225,255,.04)}
+.chip b{font-weight:600}.chip span{color:var(--dim);margin-left:6px}
+
 .warn{color:var(--amber)}.alarm{color:var(--red)}
 .timeline{list-style:none;margin:0;padding:0}
 .timeline li{display:grid;grid-template-columns:74px 1fr;gap:12px;padding:8px 0;border-top:1px solid var(--line)}
@@ -176,6 +206,7 @@ table.plain th{color:var(--dim);font-weight:500;border-top:0}
 <nav role="tablist" id="nav"></nav>
 <main>
   <section id="bruecke"></section>
+  <section id="struktur" hidden></section>
   <section id="freigaben" hidden></section>
   <section id="team" hidden></section>
   <section id="auftraege" hidden></section>
@@ -188,7 +219,7 @@ table.plain th{color:var(--dim);font-weight:500;border-top:0}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 "use strict";
-const TABS=[["bruecke","Brücke"],["freigaben","Wartet auf dich"],["team","Abteilungen und Team"],["auftraege","Aufträge"],["vorstellungen","Vorstellungen"],["ergebnisse","Ergebnisse"],["finanzen","Finanzen"],["logbuch","Logbuch"],["ziele","Ziele"]];
+const TABS=[["bruecke","Brücke"],["struktur","Struktur"],["freigaben","Wartet auf dich"],["team","Abteilungen und Team"],["auftraege","Aufträge"],["vorstellungen","Vorstellungen"],["ergebnisse","Ergebnisse"],["finanzen","Finanzen"],["logbuch","Logbuch"],["ziele","Ziele"]];
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const eur=n=>new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
@@ -259,6 +290,39 @@ function bruecke(){
    </div></div>`;
   $("#bruecke svg").addEventListener("click",e=>{const g=e.target.closest(".blip");if(g){zeige("team");document.getElementById("dept-"+g.dataset.dept)?.scrollIntoView({behavior:"smooth"})}});
   $("#bruecke svg").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.closest(".blip"))e.target.closest(".blip").dispatchEvent(new MouseEvent("click",{bubbles:true}))});
+}
+
+function struktur(){
+  const t=D.team,by=r=>t.find(p=>p.rolle===r);
+  const pa=by("Persönlicher Assistent"),gf=by("Geschäftsführer");
+  const node=(p,cls="")=>p?`<div class="panel bracket node ${cls}"><div class="avatar" aria-hidden="true">${esc(p.kuerzel)}</div><div><div class="name">${esc(p.name)}</div><div class="role">${esc(p.rolle)}</div><div class="job">${esc(p.aufgabe||p.staerken)}</div></div></div>`:"";
+  const mini=(p,lead)=>`<div class="mini${lead?" lead":""}"><div class="avatar" aria-hidden="true">${esc(p.kuerzel)}</div><div><div class="name">${esc(p.name)}<small>${esc(p.rolle)}${lead?" · Leitung":""}</small></div><div class="job">${esc(p.aufgabe||p.staerken)}</div></div></div>`;
+  const alle=abteilungen();
+  const vt=alle.find(a=>/vertrieb/i.test(a.Abteilung));
+  const zweige=alle.filter(a=>a!==vt).map(a=>{
+    const leute=a.leute.filter(p=>p!==pa&&p!==gf);
+    const chef=leute.find(p=>(a.Leitung||"").includes(p.rolle));
+    const rest=leute.filter(p=>p!==chef);
+    const ruht=!/aktiv/i.test(a.Status||"");
+    const fuehrung=!chef&&a.Leitung?`<div class="job muted" style="font-size:.82rem">geführt von: ${esc(a.Leitung)}</div>`:"";
+    return `<div class="panel branch${ruht?" ruht":""}"><div class="bhead"><h3>${esc(a.Abteilung)}</h3><span class="pill ${ruht?"wait":"on"}">${esc(a.Status||"")} · ${leute.length}</span></div>
+      <div class="bzweck">${esc(a.Zweck||"")}</div>${fuehrung}${chef?mini(chef,true):""}${rest.map(p=>mini(p,false)).join("")}${!leute.length?'<p class="empty" style="margin:0">noch niemand eingestellt</p>':""}</div>`}).join("");
+  const sich=D.sicherheit||{};
+  $("#struktur").innerHTML=`<h2>Struktur der Firma</h2><p class="muted" style="margin-top:-6px">${t.length} Mitarbeiter · ${alle.filter(a=>/aktiv/i.test(a.Status||"")).length} aktive Abteilungen · Stand ${esc(D.erzeugt)}</p>
+  <div class="org">
+    <div class="panel bracket node chef"><div class="avatar" aria-hidden="true">★</div><div><div class="name">Du</div><div class="role">Chef</div><div class="job">gibt Ziele vor, sagt Ja oder Nein, sonst arbeitet die Firma selbst</div></div></div>
+    <div class="org-line"></div>${node(pa)}<div class="org-line"></div>${node(gf)}<div class="org-line"></div>
+    <div class="org-branches">${zweige}</div>
+    <div class="org-sub"><h3>Abgeschottete Bereiche</h3><div class="cards">
+      <div class="panel sealed"><div class="lock">ABGESCHOTTET · AUF ABRUF</div><h3 style="margin-top:4px">Bereitschaft</h3><p class="muted" style="margin:0;font-size:.9rem">Jeder Chat mit Claude. Erledigt Kleines sofort, schätzt große Aufgaben ab und gibt sie nur mit deinem Ja bereinigt an die Nachtschicht. Eigene Leute, einzige mit Zugriff aufs Heimnetz und private Mails. Details stehen bewusst nicht im Leitstand.</p></div>
+      <div class="panel sealed"><div class="lock">ABGESCHOTTET · ${esc((vt&&vt.Status||"geplant").toUpperCase())}</div><h3 style="margin-top:4px">Vertrieb</h3><p class="muted" style="margin:0;font-size:.9rem">${esc(vt&&vt.Zweck||"vermarkten und verkaufen")}. Liefert der Firma nur geprüfte Zahlen, nie Texte. Veröffentlicht nur, was du freigibst.</p></div>
+    </div></div>
+    <div class="org-sub"><h3>Kontrolle</h3><div class="cards">
+      <div class="panel"><h3>Aufsichtsrat</h3><p class="muted" style="margin:0;font-size:.9rem">Prüft jeden Sonntag die Rollen, die man nicht kündigen kann (Assistentin, Geschäftsführer, Sicherheit), und ersetzt sie bei schlechter Arbeit.</p></div>
+      <div class="panel"><h3>Prüf-Zelle</h3><p class="muted" style="margin:0;font-size:.9rem">Unabhängig, nur lesend: sucht wie ein Angreifer nach Schwachstellen. Offen: <span class="alarm">${sich.rot||0} rot</span> · <span class="warn">${sich.gelb||0} gelb</span> · ${sich.gruen||0} grün</p></div>
+    </div></div>
+    <div class="org-sub"><h3>Feste Dienste</h3><div class="chips">${(D.stamm||[]).map(x=>`<div class="chip"><b>${esc(x.Agent)}</b><span>${esc(x.Dienst)}</span></div>`).join("")}</div></div>
+  </div>`;
 }
 
 function freigaben(){
@@ -366,7 +430,7 @@ async function laden(){
     D=await r.json();
   }catch(e){$("#stand").textContent="daten.json fehlt oder ist kaputt. Im Claude-Chat „Leitstand aktualisieren“ schreiben.";return}
   $("#stand").textContent=D.stand;$("#erzeugt").textContent="Daten von "+D.erzeugt;
-  nav();bruecke();freigaben();team();auftraege();vorstellungen();ergebnisse();finanzen();logbuch();ziele();
+  nav();bruecke();struktur();freigaben();team();auftraege();vorstellungen();ergebnisse();finanzen();logbuch();ziele();
   const h=location.hash.slice(1);zeige(TABS.some(([t])=>t===h)?h:"bruecke");
 }
 laden();

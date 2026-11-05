@@ -211,7 +211,7 @@ def main(vault: Path, ziel: Path):
             "note": a.get("Note", ""), "letzter": a.get("Letzter Einsatz", ""),
             "name": s.get("Name", rolle), "kuerzel": s.get("Kürzel", rolle[:2].upper()),
             "abteilung": s.get("Abteilung", "Sonstige"), "staerken": s.get("Stärken", ""),
-            "eigenart": s.get("Eigenart", ""),
+            "eigenart": s.get("Eigenart", ""), "aufgabe": s.get("Aufgabe", ""),
         })
 
     lage_t = lies(firma / "Lagebild.md")
