@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050B14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Leitstand">
+<meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Leitstand</title>
+<style>
+:root{
+  --abyss:#050B14; --hull:#0A1626; --hull2:#0E1E33; --line:#17324D;
+  --glow:#5CE1FF; --glow-dim:#2A7FA0; --amber:#FFB547; --red:#FF5A5A; --green:#47E6A0;
+  --text:#CFE9F5; --dim:#7193A8;
+  --font: "Bahnschrift","DIN Alternate","Avenir Next Condensed","Roboto Condensed","Arial Narrow",system-ui,sans-serif;
+  --r-s:4px; --r-l:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--abyss);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.5}
+body{min-height:100vh;padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  background:radial-gradient(1200px 600px at 70% -10%,#0d2a44 0%,transparent 60%),
+             repeating-linear-gradient(0deg,transparent 0 3px,rgba(92,225,255,.025) 3px 4px),var(--abyss)}
+a{color:var(--glow)}
+:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* Kopf */
+header{display:flex;align-items:center;gap:16px;padding:18px 24px 10px;flex-wrap:wrap}
+.mark{width:34px;height:34px;border:1.5px solid var(--glow);border-radius:50%;position:relative;box-shadow:0 0 14px rgba(92,225,255,.45) inset,0 0 10px rgba(92,225,255,.35)}
+.mark::after{content:"";position:absolute;inset:9px;border-radius:50%;background:var(--glow);box-shadow:0 0 12px var(--glow)}
+h1{font-size:1.6rem;font-weight:600;letter-spacing:.06em;margin:0;text-shadow:0 0 18px rgba(92,225,255,.5)}
+.stand{color:var(--dim);font-size:.85rem;margin-left:auto;text-align:right}
+
+nav{display:flex;gap:4px;padding:0 20px;overflow-x:auto;border-bottom:1px solid var(--line);scrollbar-width:none}
+nav button{background:none;border:0;color:var(--dim);font:inherit;font-size:.95rem;padding:10px 12px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+nav button[aria-selected=true]{color:var(--glow);border-bottom-color:var(--glow);text-shadow:0 0 10px rgba(92,225,255,.6)}
+nav .badge{display:inline-block;min-width:1.4em;padding:0 .35em;margin-left:6px;border-radius:9px;background:var(--amber);color:#1a1000;font-size:.75rem;font-weight:700}
+
+main{padding:22px 24px 60px;max-width:1280px;margin:0 auto}
+section[hidden]{display:none}
+h2{font-size:1.25rem;font-weight:600;margin:0 0 14px;color:#E6F7FF}
+h3{font-size:1.05rem;font-weight:600;margin:0 0 8px}
+.muted{color:var(--dim)}
+.panel{background:linear-gradient(180deg,rgba(14,30,51,.85),rgba(10,22,38,.85));border:1px solid var(--line);border-radius:var(--r-s);padding:16px 18px;position:relative}
+.panel.bracket::before,.panel.bracket::after{content:"";position:absolute;width:14px;height:14px;border:1.5px solid var(--glow);pointer-events:none}
+.panel.bracket::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+.panel.bracket::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+
+/* Brücke */
+.bridge{display:grid;grid-template-columns:minmax(300px,520px) 1fr;gap:22px;align-items:start}
+.radar-wrap{position:relative;aspect-ratio:1}
+.radar{width:100%;height:100%;display:block}
+.sweep{transform-origin:250px 250px;animation:sweep 6s linear infinite}
+@keyframes sweep{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.sweep{animation:none;opacity:.35}}
+.blip{cursor:pointer}
+.blip text{fill:var(--text);font-size:13px;font-family:var(--font)}
+.blip circle.core{fill:var(--glow);filter:drop-shadow(0 0 6px var(--glow))}
+.blip:hover text,.blip:focus text{fill:#fff}
+.readouts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.readout .big{font-size:2.6rem;line-height:1;font-weight:600}
+.readout .lbl{color:var(--dim);font-size:.9rem;margin-top:6px}
+.readout.amber .big{color:var(--amber);text-shadow:0 0 16px rgba(255,181,71,.45)}
+.readout.glow .big{color:var(--glow);text-shadow:0 0 16px rgba(92,225,255,.45)}
+.ring{display:flex;gap:14px;align-items:center}
+.wide{grid-column:1/-1}
+.list{margin:0;padding:0;list-style:none}
+.list li{padding:8px 0;border-top:1px solid var(--line)}
+.list li:first-child{border-top:0}
+
+/* Freigaben */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.vcard{display:flex;flex-direction:column;gap:8px}
+.vcard .id{color:var(--amber);font-weight:700;letter-spacing:.04em}
+.vcard p{margin:0;color:var(--dim);font-size:.92rem}
+.vcard .meta{font-size:.82rem;color:var(--dim)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:6px}
+.btn{font:inherit;font-size:.9rem;padding:7px 12px;border-radius:var(--r-s);border:1px solid var(--glow-dim);background:rgba(92,225,255,.06);color:var(--text);cursor:pointer}
+.btn:hover{border-color:var(--glow);background:rgba(92,225,255,.14)}
+.btn.yes{border-color:#2d8f6a;color:var(--green)}
+.btn.no{border-color:#7a3434;color:#ff9a9a}
+
+/* Team */
+.dept{margin-bottom:26px}
+.dept h3{display:flex;gap:10px;align-items:baseline}
+.dept h3 .muted{font-weight:400;font-size:.9rem}
+.people{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.person{display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:start}
+.avatar{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:var(--abyss);
+  background:radial-gradient(circle at 35% 30%,#bff4ff,var(--glow) 55%,#1d6b88);box-shadow:0 0 14px rgba(92,225,255,.4)}
+.person .name{font-weight:600}
+.person .role{color:var(--dim);font-size:.88rem}
+.person .traits{font-size:.86rem;margin-top:6px}
+.stats{display:flex;gap:12px;white-space:nowrap;flex-wrap:wrap;font-size:.82rem;color:var(--dim);margin-top:6px}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;border:1px solid var(--line);font-size:.78rem;color:var(--dim)}
+.pill.on{border-color:#2d8f6a;color:var(--green)}
+.pill.wait{border-color:#8a6a2a;color:var(--amber)}
+
+/* Aufträge */
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.col h3{font-size:.95rem;color:var(--dim);font-weight:500}
+.task{padding:10px 12px;margin-bottom:8px;border-left:2px solid var(--glow-dim)}
+.task .t{font-weight:600;font-size:.95rem}
+.task .m{font-size:.8rem;color:var(--dim)}
+
+/* Dokumente */
+.doc{max-width:820px}
+.doc h2{font-size:1.5rem}
+.doc h3{margin-top:24px;color:var(--glow)}
+.doc h4{margin:16px 0 6px}
+.doc p,.doc li{max-width:75ch}
+.doc table{border-collapse:collapse;margin:10px 0;width:100%;font-size:.9rem;display:block;overflow-x:auto}
+.doc th,.doc td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.doc th{background:var(--hull2);color:#E6F7FF;font-weight:600}
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin:14px 0 6px}
+.fact .v{font-size:1.4rem;font-weight:600;color:var(--glow)}
+.fact .k{font-size:.82rem;color:var(--dim)}
+.amp{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.amp.gruen{background:var(--green)}.amp.gelb{background:var(--amber)}.amp.rot{background:var(--red)}
+.doclist button{all:unset;cursor:pointer;display:block;width:100%}
+.doclist .panel{margin-bottom:10px}
+.back{margin-bottom:14px}
+
+/* Finanzen */
+.bar{height:8px;background:var(--hull2);border-radius:4px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--glow);box-shadow:0 0 10px var(--glow)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+table.plain{border-collapse:collapse;width:100%;font-size:.92rem}
+table.plain td,table.plain th{padding:7px 6px;border-top:1px solid var(--line);text-align:left;vertical-align:top}
+table.plain th{color:var(--dim);font-weight:500;border-top:0}
+
+/* Logbuch */
+.chart{width:100%;height:160px}
+.entry{border-left:2px solid var(--line);padding:0 0 18px 16px;position:relative}
+.entry::before{content:"";position:absolute;left:-6px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--glow);box-shadow:0 0 8px var(--glow)}
+
+.warn{color:var(--amber)}.alarm{color:var(--red)}
+.timeline{list-style:none;margin:0;padding:0}
+.timeline li{display:grid;grid-template-columns:74px 1fr;gap:12px;padding:8px 0;border-top:1px solid var(--line)}
+.timeline li:first-child{border-top:0}
+.timeline .d{font-size:1.4rem;font-weight:600;color:var(--glow);line-height:1}
+.timeline .d small{display:block;font-size:.72rem;color:var(--dim);font-weight:400;margin-top:3px}
+.timeline .soon .d{color:var(--amber)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--hull2);border:1px solid var(--glow);padding:10px 16px;border-radius:var(--r-s);opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.show{opacity:1}
+.empty{color:var(--dim);font-style:italic}
+
+@media (max-width:820px){
+  .bridge,.grid2{grid-template-columns:1fr}
+  header{padding:14px 16px 8px}
+  main{padding:16px 14px 50px}
+  .readout .big{font-size:2.1rem}
+  .blip text{font-size:24px}
+}
+@media print{
+  body{background:#fff;color:#000}
+  header,nav,.back,.actions,.toast{display:none!important}
+  section{display:none!important}
+  section.printing{display:block!important}
+  .doc h3{color:#000}.doc th{background:#eee;color:#000}.doc th,.doc td{border-color:#999}
+  .panel{background:none;border:0}
+  .fact .v{color:#000}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="mark" aria-hidden="true"></div>
+  <h1>Leitstand</h1>
+  <div class="stand"><div id="stand">Daten werden geladen</div><div id="erzeugt" class="num"></div></div>
+</header>
+<nav role="tablist" id="nav"></nav>
+<main>
+  <section id="bruecke"></section>
+  <section id="freigaben" hidden></section>
+  <section id="team" hidden></section>
+  <section id="auftraege" hidden></section>
+  <section id="vorstellungen" hidden></section>
+  <section id="ergebnisse" hidden></section>
+  <section id="finanzen" hidden></section>
+  <section id="logbuch" hidden></section>
+  <section id="ziele" hidden></section>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+"use strict";
+const TABS=[["bruecke","Brücke"],["freigaben","Wartet auf dich"],["team","Abteilungen und Team"],["auftraege","Aufträge"],["vorstellungen","Vorstellungen"],["ergebnisse","Ergebnisse"],["finanzen","Finanzen"],["logbuch","Logbuch"],["ziele","Ziele"]];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const eur=n=>new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
+let D=null;
+function alt(){const m=/(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})/.exec(D&&D.erzeugt||"");if(!m)return false;const t=new Date(+m[3],m[2]-1,+m[1],+m[4],+m[5]);return Date.now()-t>3600e3}
+
+function toast(t){const el=$("#toast");el.textContent=t;el.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove("show"),2600)}
+function kopieren(t){
+  const fertig=()=>toast(`„${t}“ kopiert – jetzt in den Claude-Chat einfügen`);
+  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).then(fertig,()=>alt());}else alt();
+  function alt(){const a=document.createElement("textarea");a.value=t;a.setAttribute("readonly","");a.style.position="fixed";a.style.opacity="0";document.body.appendChild(a);a.select();try{document.execCommand("copy");fertig()}catch(e){toast(`Bitte selbst tippen: ${t}`)}a.remove()}
+}
+
+function zeige(id){
+  TABS.forEach(([t])=>{$("#"+t).hidden=t!==id;const b=document.getElementById("tab-"+t);if(b)b.setAttribute("aria-selected",t===id)});
+  if(location.hash!=="#"+id)history.replaceState(null,"","#"+id);
+  window.scrollTo(0,0);
+}
+function nav(){
+  const offen=vorschlaege().length;
+  $("#nav").innerHTML=TABS.map(([id,n])=>`<button role="tab" id="tab-${id}" data-tab="${id}">${esc(n)}${id==="freigaben"&&offen?`<span class="badge num">${offen}</span>`:""}</button>`).join("");
+  $("#nav").onclick=e=>{const b=e.target.closest("button");if(b)zeige(b.dataset.tab)};
+}
+const vorschlaege=()=>D.auftraege.filter(a=>a.spalte.startsWith("Vorschl")||a.spalte.startsWith("Freigabe"));
+const abteilungen=()=>{const m=new Map();(D.abteilungen||[]).forEach(a=>m.set(a.Abteilung,{...a,leute:[]}));D.team.forEach(p=>{if(!m.has(p.abteilung))m.set(p.abteilung,{Abteilung:p.abteilung,Status:"aktiv",Zweck:"",leute:[]});m.get(p.abteilung).leute.push(p)});return [...m.values()]};
+
+/* Brücke mit Radar */
+function bruecke(){
+  const ab=abteilungen(),n=ab.length,cx=250,cy=250,schmal=window.innerWidth<820;
+  const blips=ab.map((a,i)=>{
+    const w=(i/n)*Math.PI*2-Math.PI/2,r=a.leute.length?150+((i%2)*45):205;
+    const x=cx+Math.cos(w)*r,y=cy+Math.sin(w)*r,g=4+Math.min(a.leute.length,8)*1.6;
+    const ruhend=!a.leute.length||/geplant|ruh|wartet/i.test(a.Status||"");
+    const anchor=x<cx-20?"end":x>cx+20?"start":"middle",tx=x+(anchor==="end"?-g-6:anchor==="start"?g+6:0),ty=y+(anchor==="middle"?(y<cy?-g-8:g+16):4);
+    return `<g class="blip" tabindex="0" role="button" aria-label="${esc(a.Abteilung)}: ${a.leute.length} Mitarbeiter" data-dept="${esc(a.Abteilung)}">
+      <circle cx="${x}" cy="${y}" r="${g+8}" fill="none" stroke="${ruhend?"#7193A8":"#5CE1FF"}" stroke-opacity=".35"/>
+      <circle class="core" cx="${x}" cy="${y}" r="${g}" ${ruhend?'style="fill:#7193A8;filter:none"':""}/>
+      <text x="${tx}" y="${ty}" text-anchor="${anchor}">${esc(schmal?a.Abteilung.split(" ")[0]:a.Abteilung)} <tspan fill="#7193A8">${a.leute.length}</tspan></text></g>`}).join("");
+  const radar=`<svg class="radar" viewBox="-130 0 760 500" role="img" aria-label="Radar der Abteilungen">
+    <defs><radialGradient id="rg"><stop offset="0" stop-color="#5CE1FF" stop-opacity=".12"/><stop offset="1" stop-color="#5CE1FF" stop-opacity="0"/></radialGradient>
+    <linearGradient id="sw" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5CE1FF" stop-opacity="0"/><stop offset="1" stop-color="#5CE1FF" stop-opacity=".35"/></linearGradient></defs>
+    <circle cx="250" cy="250" r="235" fill="url(#rg)" stroke="#17324D"/>
+    ${[60,120,180].map(r=>`<circle cx="250" cy="250" r="${r}" fill="none" stroke="#17324D"/>`).join("")}
+    <line x1="15" y1="250" x2="485" y2="250" stroke="#17324D"/><line x1="250" y1="15" x2="250" y2="485" stroke="#17324D"/>
+    <path class="sweep" d="M250 250 L485 250 A235 235 0 0 0 416 84 Z" fill="url(#sw)"/>
+    <circle cx="250" cy="250" r="34" fill="#050B14" stroke="#5CE1FF"/>
+    <text x="250" y="246" text-anchor="middle" fill="#5CE1FF" font-size="22" font-weight="600" font-family="inherit">${D.team.length}</text>
+    <text x="250" y="264" text-anchor="middle" fill="#7193A8" font-size="11" font-family="inherit">im Dienst</text>
+    ${blips}</svg>`;
+  const k=D.kontingent,pct=Math.min(1,(k.woche||0)/(k.woche_max||30)),C=2*Math.PI*30,kFarbe=pct>=1?"#FF5A5A":pct>=.8?"#FFB547":"#5CE1FF";
+  const fr=(D.finanzen.fristen||[]).filter(f=>f.tage!=null&&f.tage>=0).sort((a,b)=>a.tage-b.tage).slice(0,4);
+  const hinweise=[];if(pct>=.8)hinweise.push(`<li class="${pct>=1?"alarm":"warn"}">Kontingent: ${k.woche} von ${k.woche_max} Einsätzen diese Woche verbraucht${pct>=1?" – die Firma pausiert bis Montag":""}</li>`);if(alt())hinweise.push(`<li class="warn">Die Daten sind älter als eine Stunde. Die automatische Aktualisierung prüfen.</li>`);
+  const s=D.sicherheit,sOk=!s.rot&&!s.gelb;
+  const offenA=D.auftraege.filter(a=>/Eingang|Arbeit|Prüfung|Streit/.test(a.spalte)).length;
+  const lage=D.lage||{},teil=k=>Object.entries(lage).find(([t])=>t.includes(k))?.[1]||[];
+  $("#bruecke").innerHTML=`<div class="bridge">
+   <div class="radar-wrap">${radar}</div>
+   <div class="readouts">
+     <div class="panel bracket readout amber"><div class="big num">${vorschlaege().length}</div><div class="lbl">Vorschläge warten auf dein Ja</div></div>
+     <div class="panel readout glow"><div class="big num">${offenA}</div><div class="lbl">Aufträge in der Pipeline</div></div>
+     <div class="panel readout"><div class="ring"><svg width="74" height="74" viewBox="0 0 74 74" aria-hidden="true"><circle cx="37" cy="37" r="30" fill="none" stroke="#17324D" stroke-width="7"/><circle cx="37" cy="37" r="30" fill="none" stroke="${kFarbe}" stroke-width="7" stroke-dasharray="${C*pct} ${C}" transform="rotate(-90 37 37)" stroke-linecap="round"/></svg>
+       <div><div class="big num" style="font-size:1.8rem">${k.woche} / ${k.woche_max}</div><div class="lbl">Einsätze diese Woche (max. ${k.schicht_max} je Schicht)</div></div></div></div>
+     <div class="panel readout"><div class="big" style="font-size:1.6rem;color:${sOk?"var(--green)":"var(--red)"}">${sOk?"Keine offenen Funde":`${s.rot} kritisch, ${s.gelb} mittel`}</div><div class="lbl">Sicherheit laut Prüf-Zelle · ${s.laeufe} Prüfläufe</div></div>
+     <div class="panel readout"><div class="big num" style="font-size:1.8rem">${eur(D.finanzen.summen["Gewinn (vorläufig)"])}</div><div class="lbl">Gewinn 2026 (Einnahmen ${eur(D.finanzen.summen.Einnahmen)}, Ausgaben ${eur(D.finanzen.summen.Ausgaben)})</div></div>
+     <div class="panel readout"><div class="big num" style="font-size:1.8rem">${abteilungen().length}</div><div class="lbl">Abteilungen · ${D.stamm.length} Daueraufgaben</div></div>
+     <div class="panel wide"><h3>Nächste Fristen</h3>${fr.length?`<ul class="timeline">${fr.map(f=>`<li class="${f.tage<=14?"soon":""}"><div class="d num">${f.tage}<small>${f.tage===1?"Tag":"Tage"}</small></div><div>${esc(f.Was)}<div class="muted" style="font-size:.82rem">${esc(f.Wann)} · ${esc(f.Wer)}</div></div></li>`).join("")}</ul>`:'<p class="empty">Keine Frist mit Datum.</p>'}</div>
+     <div class="panel wide"><h3>Lage</h3><ul class="list">${hinweise.join("")}${[...teil("Wartet"),...teil("Als Nächstes")].slice(0,6).map(t=>`<li>${esc(t)}</li>`).join("")||'<li class="empty">Nichts gemeldet</li>'}</ul></div>
+   </div></div>`;
+  $("#bruecke svg").addEventListener("click",e=>{const g=e.target.closest(".blip");if(g){zeige("team");document.getElementById("dept-"+g.dataset.dept)?.scrollIntoView({behavior:"smooth"})}});
+  $("#bruecke svg").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.closest(".blip"))e.target.closest(".blip").dispatchEvent(new MouseEvent("click",{bubbles:true}))});
+}
+
+function freigaben(){
+  const v=vorschlaege(),lage=Object.entries(D.lage||{}).find(([t])=>t.includes("Wartet"))?.[1]||[];
+  $("#freigaben").innerHTML=`<h2>Wartet auf dich</h2>
+   <p class="muted" style="max-width:70ch">Entschieden wird im Claude-Chat, damit jedes Ja nachweislich von dir kommt. Tippe auf „Ja kopieren“ und füge es im Chat ein.</p>
+   <div class="cards">${v.map(a=>`<article class="panel vcard">
+     <div class="id">${esc(a.id)}</div><h3>${esc(a.titel)}</h3><p>${esc(a.beschreibung)}</p>
+     <div class="meta">${esc(a.meta.join(" · "))}</div>
+     <div class="actions"><button class="btn yes" data-copy="${esc(a.id)} ja">Ja kopieren</button><button class="btn no" data-copy="${esc(a.id)} nein">Nein kopieren</button>
+     ${a.vorstellung?`<button class="btn" data-vorst="${esc(a.vorstellung)}">Vorstellung ansehen</button>`:""}</div></article>`).join("")||'<p class="empty">Keine offenen Vorschläge. Die Strategie meldet sich montags und donnerstags.</p>'}</div>
+   ${lage.length?`<div class="panel" style="margin-top:18px"><h3>Außerdem aus dem Lagebild</h3><ul class="list">${lage.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>`:""}`;
+}
+
+function team(){
+  const ab=abteilungen();
+  $("#team").innerHTML=`<h2>Abteilungen und Team</h2>`+ab.map(a=>`<div class="dept" id="dept-${esc(a.Abteilung)}">
+    <h3>${esc(a.Abteilung)} <span class="muted">${esc(a.Zweck||"")}</span> <span class="pill ${/aktiv/.test(a.Status||"")?"on":"wait"}">${esc(a.Status||"")}</span></h3>
+    <div class="people">${a.leute.map(p=>`<div class="panel person"><div class="avatar" aria-hidden="true">${esc(p.kuerzel)}</div><div>
+      <div class="name">${esc(p.name)}</div><div class="role">${esc(p.rolle)} · ${esc(p.agent.replace(p.rolle,"").trim()||"")}</div>
+      <div class="traits">${esc(p.staerken)}<br><span class="muted">${esc(p.eigenart)}</span></div>
+      <div class="stats num"><span>erledigt ${esc(p.erledigt)}</span><span>Abnahme ${esc(p.quote)}</span><span>${esc(p.note)}</span></div>
+      <div style="margin-top:6px"><span class="pill ${/aktiv/.test(p.status)&&!/wartet/.test(p.status)?"on":"wait"}">${esc(p.status)}</span></div></div></div>`).join("")||'<p class="empty">Noch niemand eingestellt. Die Abteilung startet, sobald es Arbeit gibt.</p>'}</div></div>`).join("")+
+    `<div class="grid2"><div class="panel"><h3>Daueraufgaben</h3><table class="plain"><tr><th>Wer</th><th>Wann</th></tr>${D.stamm.map(s=>`<tr><td>${esc(s.Agent)}</td><td class="num">${esc(s.Dienst)}</td></tr>`).join("")}</table></div>
+     <div class="panel"><h3>Ehemalige</h3><table class="plain"><tr><th>Wer</th><th>Grund</th></tr>${D.ehemalige.map(s=>`<tr><td>${esc(s.Agent)}</td><td>${esc(s.Grund)}</td></tr>`).join("")||'<tr><td colspan="2" class="empty">Noch niemand</td></tr>'}</table></div></div>`;
+}
+
+function auftraege(){
+  const spalten=["Eingang","In Arbeit","Prüfung","Streitfall","Freigabe Chef","Erledigt"];
+  $("#auftraege").innerHTML=`<h2>Aufträge</h2><div class="board">${spalten.map(s=>{const t=D.auftraege.filter(a=>a.spalte.startsWith(s.split(" ")[0])&&a.id.startsWith("A"));
+    return `<div class="col"><h3>${esc(s)} <span class="num">(${t.length})</span></h3>${t.map(a=>`<div class="panel task"><div class="m">${esc(a.id)} · ${esc(a.von)}${a.prio?" · "+esc(a.prio):""}</div><div class="t">${esc(a.titel)}</div></div>`).join("")||'<p class="empty">leer</p>'}</div>`}).join("")}</div>`;
+}
+
+function dokListe(id,titel,items,leer){
+  $("#"+id).innerHTML=`<h2>${esc(titel)}</h2><div class="doclist">${items.map((it,i)=>`<button data-open="${i}"><div class="panel"><h3>${esc(it.t)}</h3><div class="muted" style="font-size:.9rem">${esc(it.k)}</div></div></button>`).join("")||`<p class="empty">${esc(leer)}</p>`}</div>`;
+  $("#"+id).onclick=e=>{const b=e.target.closest("[data-open]");if(b)items[+b.dataset.open].open()};
+}
+function dokZeigen(id,kopf,html,zurueck){
+  const s=$("#"+id);s.onclick=null;
+  s.innerHTML=`<div class="actions back"><button class="btn" id="zur">Zurück</button><button class="btn" id="pdf">Als PDF sichern</button></div><article class="doc">${kopf}${html}</article>`;
+  $("#zur").onclick=zurueck;$("#pdf").onclick=()=>{s.classList.add("printing");window.print();s.classList.remove("printing")};
+  window.scrollTo(0,0);
+}
+const AMP={gruen:"grün",gelb:"gelb",rot:"rot"};
+function vorstellungen(){
+  dokListe("vorstellungen","Vorstellungen",D.vorstellungen.map(v=>({t:`${v.fm.vorschlag||""} ${v.fm.titel||v.datei}`,k:`${v.fm.abteilung||""} · Empfehlung: ${v.fm.empfehlung||"–"} · Entscheidung: ${v.fm.entscheidung||"offen"}`,open:()=>vOffen(v)})),"Noch keine Vorstellungen. Größere Vorschläge kommen künftig mit einer Vorstellung.");
+}
+function vOffen(v){
+  const f=v.fm,a=x=>`<span class="amp ${esc(x)}"></span>${esc(AMP[x]||x||"–")}`;
+  const kopf=`<h2>${esc(f.vorschlag)}: ${esc(f.titel)}</h2><div class="facts">
+   <div class="panel fact"><div class="v num">${eur(+f.kosten_einmalig)}</div><div class="k">einmalig</div></div>
+   <div class="panel fact"><div class="v num">${eur(+f.kosten_monatlich)}</div><div class="k">pro Monat</div></div>
+   <div class="panel fact"><div class="v num">${eur(+f.umsatz_jahr1_vorsichtig)}</div><div class="k">Jahr 1 vorsichtig</div></div>
+   <div class="panel fact"><div class="v num">${eur(+f.umsatz_jahr1_mittel)}</div><div class="k">Jahr 1 mittel</div></div>
+   <div class="panel fact"><div class="v num">${eur(+f.umsatz_jahr1_gut)}</div><div class="k">Jahr 1 gut</div></div>
+   <div class="panel fact"><div class="v" style="font-size:1rem">Recht: ${a(f.ampel_recht)}<br>Sicherheit: ${a(f.ampel_sicherheit)}</div><div class="k">Ampeln</div></div></div>
+   <p class="muted">Dein Aufwand: ${esc(f.aufwand_chef)}</p>
+   <div class="actions"><button class="btn yes" data-copy="${esc(f.vorschlag)} ja">Ja kopieren</button><button class="btn no" data-copy="${esc(f.vorschlag)} nein">Nein kopieren</button></div>`;
+  zeige("vorstellungen");dokZeigen("vorstellungen",kopf,v.html,vorstellungen);
+}
+function ergebnisse(){
+  dokListe("ergebnisse","Ergebnisse",D.ergebnisse.map(r=>({t:r.titel,k:r.kurz,open:()=>dokZeigen("ergebnisse",`<h2>${esc(r.titel)}</h2>`,`<h3>Verstanden als</h3><p>${esc(r.kurz)}</p><h3>Inhalt</h3><ul>${r.gliederung.map(g=>`<li>${esc(g)}</li>`).join("")}</ul><p class="muted">Den vollständigen Text findest du in Obsidian unter Agenten-Firma › Ergebnisse.</p>`,ergebnisse)})),"Noch keine fertigen Ergebnisse.");
+}
+
+function finanzen(){
+  const F=D.finanzen,pc=s=>Math.min(100,parseFloat(String(s).replace(",","."))||0);
+  $("#finanzen").innerHTML=`<h2>Finanzen</h2>
+   <div class="readouts" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:16px">
+    ${Object.entries(F.summen).map(([k,v])=>`<div class="panel readout"><div class="big num" style="font-size:1.8rem">${eur(v)}</div><div class="lbl">${esc(k)}</div></div>`).join("")}</div>
+   <div class="grid2"><div class="panel"><h3>Grenzwerte</h3>${F.grenzen.map(g=>`<div style="margin-bottom:14px"><div>${esc(g.Grenze)}</div><div class="muted" style="font-size:.85rem">${esc(g.Wert)} · erreicht ${esc(g.Stand)}</div><div class="bar"><i style="width:${pc(g.Stand)}%"></i></div></div>`).join("")}</div>
+   <div class="panel"><h3>Fristen</h3><table class="plain"><tr><th>Wann</th><th>Was</th><th>Wer</th></tr>${F.fristen.map(f=>`<tr><td class="num">${esc(f.Wann)}</td><td>${esc(f.Was)}<div class="muted" style="font-size:.82rem">${esc(f.Stand)}</div></td><td>${esc(f.Wer)}</td></tr>`).join("")}</table></div></div>
+   <div class="panel" style="margin-top:16px"><h3>Verkäufe</h3>${verkaufKurve()}</div>
+   <p class="muted" style="font-size:.85rem;margin-top:14px">Vorbereitung durch die Abteilung Finanzen und Recht, keine Steuerberatung.</p>`;
+}
+
+function verkaufKurve(){
+  const v=D.verkauf||[];if(!v.length)return '<p class="empty">Noch keine Verkäufe. Die Kurve erscheint, sobald der Vertrieb geprüfte Zahlen liefert.</p>';
+  const W=600,H=160,max=Math.max(1,...v.map(x=>x.verkaeufe)),dx=v.length>1?(W-40)/(v.length-1):0;
+  const pts=v.map((x,i)=>[20+i*dx,H-30-(x.verkaeufe/max)*(H-50)]);
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Verkäufe je Monat"><polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="#5CE1FF" stroke-width="2.5"/>${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="#5CE1FF"/><text x="${p[0]}" y="${H-10}" fill="#7193A8" font-size="11" text-anchor="middle">${esc(v[i].monat)}</text><text x="${p[0]}" y="${p[1]-9}" fill="#CFE9F5" font-size="12" text-anchor="middle">${v[i].verkaeufe}</text>`).join("")}</svg>`;
+}
+function logbuch(){
+  const s=[...D.schichten].reverse(),max=Math.max(8,...s.map(x=>x.starts)),bw=Math.max(24,Math.min(60,600/Math.max(1,s.length)));
+  const bars=s.map((x,i)=>{const h=(x.starts/max)*110;return `<g><rect x="${20+i*(bw+12)}" y="${130-h}" width="${bw}" height="${h}" fill="#5CE1FF" opacity=".8"/><text x="${20+i*(bw+12)+bw/2}" y="148" fill="#7193A8" font-size="11" text-anchor="middle">${esc(x.titel.slice(0,5))}</text><text x="${20+i*(bw+12)+bw/2}" y="${124-h}" fill="#CFE9F5" font-size="12" text-anchor="middle">${x.starts}</text></g>`}).join("");
+  $("#logbuch").innerHTML=`<h2>Logbuch</h2><div class="panel" style="margin-bottom:18px"><h3>Einsätze je Schicht</h3>
+   <svg class="chart" viewBox="0 0 ${Math.max(300,40+s.length*(bw+12))} 160" role="img" aria-label="Einsätze je Schicht"><line x1="10" y1="${130-(8/max)*110}" x2="2000" y2="${130-(8/max)*110}" stroke="#FFB547" stroke-dasharray="4 4" opacity=".6"/>${bars}</svg>
+   <div class="muted" style="font-size:.82rem">Gestrichelt: Obergrenze von 8 je Schicht</div></div>
+   <div class="panel" style="margin-bottom:18px"><h3>Woche für Woche</h3>${(D.wochen||[]).length?`<table class="plain"><tr><th>Woche</th><th>Einsätze</th><th>Abnahme beim ersten Versuch</th></tr>${D.wochen.map((w,i,a)=>{const q=w.geprueft?Math.round(100*w.abgenommen/w.geprueft):null,v=i?a[i-1]:null,vq=v&&v.geprueft?Math.round(100*v.abgenommen/v.geprueft):null,pf=q!=null&&vq!=null?(q>vq?" ▲":q<vq?" ▼":" ="):"";return `<tr><td>${esc(w.kw)}</td><td class="num">${w.starts} / 30</td><td class="num">${q==null?"–":q+" %"+pf}</td></tr>`}).join("")}</table>`:'<p class="empty">Noch keine Woche abgeschlossen.</p>'}</div>
+   ${D.schichten.map(x=>`<div class="entry"><h3>${esc(x.titel)}</h3><ul class="list">${x.punkte.map(p=>`<li>${esc(p)}</li>`).join("")}</ul></div>`).join("")}`;
+}
+
+function ziele(){
+  $("#ziele").innerHTML=`<h2>Ziele der Firma</h2><p class="muted">Nur du änderst die Ziele, im Chat.</p><ol class="list" style="list-style:none">${D.ziele.map((z,i)=>`<li class="panel" style="margin-bottom:10px;border-top:1px solid var(--line)"><h3><span class="num" style="color:var(--glow)">${i+1}</span>&nbsp; ${esc(z.titel)}</h3><div class="muted">${esc(z.text)}</div></li>`).join("")}</ol>`;
+}
+
+document.addEventListener("click",e=>{
+  const c=e.target.closest("[data-copy]");if(c){kopieren(c.dataset.copy);return}
+  const v=e.target.closest("[data-vorst]");if(v){const x=D.vorstellungen.find(y=>y.datei===v.dataset.vorst);if(x)vOffen(x)}
+});
+
+async function laden(){
+  try{
+    const r=await fetch("daten.json?"+Date.now(),{cache:"no-store"});
+    if(!r.ok)throw new Error(r.status);
+    D=await r.json();
+  }catch(e){$("#stand").textContent="daten.json fehlt oder ist kaputt. Im Claude-Chat „Leitstand aktualisieren“ schreiben.";return}
+  $("#stand").textContent=D.stand;$("#erzeugt").textContent="Daten von "+D.erzeugt;
+  nav();bruecke();freigaben();team();auftraege();vorstellungen();ergebnisse();finanzen();logbuch();ziele();
+  const h=location.hash.slice(1);zeige(TABS.some(([t])=>t===h)?h:"bruecke");
+}
+laden();
+setInterval(()=>{if(document.visibilityState==="visible"&&!document.querySelector(".doc"))laden()},300000);
+</script>
+</body>
+</html>

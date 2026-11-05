@@ -1,6 +1,6 @@
 # Leitstand-Sync
 
-Kleiner Begleit-Container für Philipps Leitstand (Übersicht der Agenten-Firma). Er holt alle 10 Minuten **nur lesend** den Firmenordner aus dem privaten Vault und erzeugt daraus `daten.json`. Die Webseite selbst liefert ein getrennter, gehärteter nginx-Container aus.
+Kleiner Begleit-Container für Philipps Leitstand (Übersicht der Agenten-Firma). Er holt alle 10 Minuten **nur lesend** den Firmenordner aus dem privaten Vault und erzeugt daraus `daten.json`. Beim Start legt er außerdem die Webseite (`web/`) in den Ausgabeordner; ausgeliefert wird sie von einem getrennten, gehärteten nginx-Container. App-Updates: hier ändern, pushen, Container neu laden.
 
 ## Sicherheit
 - Nur-Lese-Deploy-Key, nur für ein Repository; der geheime Teil verlässt `/schluessel` nie

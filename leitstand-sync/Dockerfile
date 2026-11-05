@@ -6,5 +6,6 @@ LABEL org.opencontainers.image.description="Leitstand-Sync fuer Philipps Agenten
 RUN apk add --no-cache git openssh-client tzdata
 ENV TZ=Europe/Berlin PYTHONDONTWRITEBYTECODE=1
 COPY leitstand_daten.py sync.sh /opt/leitstand/
+COPY web/ /opt/leitstand/web/
 RUN chmod 755 /opt/leitstand/sync.sh
 CMD ["/opt/leitstand/sync.sh"]

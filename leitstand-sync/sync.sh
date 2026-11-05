@@ -16,6 +16,9 @@ echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH
 cp /schluessel/id_ed25519.pub /status/oeffentlicher-schluessel.txt
 export GIT_SSH_COMMAND="ssh -i /schluessel/id_ed25519 -o IdentitiesOnly=yes -o UserKnownHostsFile=/schluessel/known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes"
 
+# Webseite (App-Code) kommt aus dem Image und wird bei jedem Start ausgeliefert
+for f in index.html manifest.json icon.svg; do cp "/opt/leitstand/web/$f" "/ausgabe/$f.neu" && chmod 644 "/ausgabe/$f.neu" && mv "/ausgabe/$f.neu" "/ausgabe/$f"; done
+
 melde() {
   printf '{"zeit":"%s","ok":%s,"meldung":"%s","stand":"%s"}\n' "$(date '+%d.%m.%Y %H:%M')" "$1" "$2" "$3" > "$STATUS.tmp"
   mv "$STATUS.tmp" "$STATUS"
