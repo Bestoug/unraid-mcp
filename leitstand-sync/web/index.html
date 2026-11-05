@@ -168,6 +168,94 @@ table.plain th{color:var(--dim);font-weight:500;border-top:0}
 .chip{padding:6px 10px;border:1px solid var(--line);border-radius:16px;font-size:.85rem;background:rgba(92,225,255,.04)}
 .chip b{font-weight:600}.chip span{color:var(--dim);margin-left:6px}
 
+/* Stammbaum */
+.tree-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
+.tree-tools .muted{font-size:.85rem}
+.tree-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r-s);background:rgba(5,11,20,.55);padding:18px 10px 26px;-webkit-overflow-scrolling:touch;cursor:grab}
+.tree-wrap.dragging{cursor:grabbing}
+.tree{width:max-content;margin:0 auto}
+.tree ul{padding-top:22px;position:relative;display:flex;justify-content:center;margin:0;padding-left:0}
+.tree li{list-style:none;text-align:center;position:relative;padding:22px 7px 0;display:flex;flex-direction:column;align-items:center}
+.tree li::before,.tree li::after{content:"";position:absolute;top:0;right:50%;border-top:2px solid var(--glow-dim);width:50%;height:22px}
+.tree li::after{right:auto;left:50%;border-left:2px solid var(--glow-dim)}
+.tree li:only-child::before,.tree li:only-child::after{display:none}
+.tree li:only-child{padding-top:0}
+.tree li:first-child::before,.tree li:last-child::after{border:0 none}
+.tree li:last-child::before{border-right:2px solid var(--glow-dim);border-radius:0 8px 0 0}
+.tree li:first-child::after{border-radius:8px 0 0 0}
+.tree ul ul::before{content:"";position:absolute;top:0;left:50%;border-left:2px solid var(--glow-dim);width:0;height:22px}
+.tree>ul{padding-top:0}
+.tree li.dashed::before,.tree li.dashed::after{border-style:dashed}
+.tn{all:unset;box-sizing:border-box;cursor:pointer;display:flex;gap:10px;align-items:center;text-align:left;min-width:170px;max-width:210px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;
+  background:linear-gradient(180deg,rgba(14,30,51,.95),rgba(10,22,38,.95));box-shadow:0 0 0 1px rgba(92,225,255,.04),0 6px 18px rgba(0,0,0,.35);transition:border-color .15s,box-shadow .15s}
+.tn:hover,.tn:focus-visible{border-color:var(--glow);box-shadow:0 0 14px rgba(92,225,255,.35)}
+.tn .avatar{width:38px;height:38px;font-size:.78rem;flex:none}
+.tn .n{font-weight:600;font-size:.92rem;line-height:1.2}
+.tn .r{color:var(--glow);font-size:.75rem;letter-spacing:.02em}
+.tn.chef{border-color:#8a6a2a;min-width:200px}
+.tn.chef .avatar{background:radial-gradient(circle at 35% 30%,#fff1d6,var(--amber) 55%,#8a5a12);box-shadow:0 0 16px rgba(255,181,71,.5)}
+.tn.sealed{border-style:dashed;border-color:#8a6a2a}
+.tn.sealed .r{color:var(--amber)}
+.tn.ctrl{border-style:dashed}
+.tn.ruht{opacity:.5}
+.ico{width:38px;height:38px;flex:none;border-radius:10px;display:grid;place-items:center;font-size:1.15rem;background:rgba(92,225,255,.08);border:1px solid var(--line)}
+.dept-box{display:flex;flex-direction:column;align-items:center}
+.dept-head{all:unset;box-sizing:border-box;cursor:pointer;min-width:190px;max-width:220px;padding:8px 12px;border-radius:10px;text-align:center;
+  background:linear-gradient(180deg,rgba(92,225,255,.16),rgba(92,225,255,.05));border:1px solid var(--glow-dim)}
+.dept-head .n{font-weight:600;font-size:.95rem;color:#E6F7FF}
+.dept-head .c{font-size:.75rem;color:var(--dim)}
+.dept-head.ruht{opacity:.55;border-style:dashed}
+.members{position:relative;margin-top:14px;padding-left:16px;display:flex;flex-direction:column;gap:10px}
+.members::before{content:"";position:absolute;left:0;top:-14px;bottom:22px;border-left:2px solid var(--glow-dim)}
+.members>div{position:relative}
+.members>div::before{content:"";position:absolute;left:-16px;top:50%;width:14px;border-top:2px solid var(--glow-dim)}
+.members .tn{min-width:180px}
+.members .lead .avatar{outline:2px solid var(--glow);outline-offset:2px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.8rem;color:var(--dim);margin-top:10px}
+.legend i{display:inline-block;width:22px;border-top:2px solid var(--glow-dim);vertical-align:middle;margin-right:6px}
+.legend i.d{border-top-style:dashed;border-color:var(--amber)}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:20;max-height:70vh;overflow:auto;background:var(--hull);border-top:1px solid var(--glow);box-shadow:0 -10px 40px rgba(0,0,0,.6);
+  padding:18px 22px calc(18px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .22s ease,visibility 0s linear .22s}
+.sheet.open{transition:transform .22s ease}
+.sheet:not(.open){visibility:hidden}
+.sheet.open{transform:none}
+.sheet .x{position:absolute;right:14px;top:10px}
+.sheet .kopf{display:flex;gap:14px;align-items:center;margin-bottom:10px}
+.sheet .kopf .avatar,.sheet .kopf .ico{width:54px;height:54px}
+.sheet dl{display:grid;grid-template-columns:110px 1fr;gap:6px 12px;margin:0;font-size:.92rem}
+.sheet dt{color:var(--dim)}
+.sheet dd{margin:0}
+@media (prefers-reduced-motion:reduce){.sheet{transition:none}}
+
+/* So funktioniert's (grafisch) */
+.ex-sec{margin-bottom:34px}
+.ex-sec>h3{color:var(--dim);font-weight:500;font-size:.9rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.flow{display:flex;flex-direction:column;align-items:center;gap:0}
+.flow .row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;width:100%}
+.fn{padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:linear-gradient(180deg,rgba(14,30,51,.95),rgba(10,22,38,.95));text-align:center;min-width:150px;max-width:240px}
+.fn .t{font-weight:600}
+.fn .s{font-size:.8rem;color:var(--dim);line-height:1.3;margin-top:2px}
+.fn .e{font-size:1.3rem;display:block;margin-bottom:2px}
+.fn.hub{border-color:var(--glow);box-shadow:0 0 16px rgba(92,225,255,.25)}
+.fn.you{border-color:#8a6a2a;box-shadow:0 0 14px rgba(255,181,71,.2)}
+.fn.ok{border-color:#2d8f6a}
+.arrow{width:2px;height:26px;background:var(--glow-dim);position:relative;margin:2px 0}
+.arrow::after{content:"";position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top:8px solid var(--glow-dim);border-bottom:0}
+.merge{width:min(100%,640px);height:26px;position:relative}
+.merge::before{content:"";position:absolute;left:16%;right:16%;top:0;height:12px;border:2px solid var(--glow-dim);border-top:0;border-radius:0 0 10px 10px}
+.merge::after{content:"";position:absolute;left:50%;top:12px;height:14px;border-left:2px solid var(--glow-dim)}
+.split{width:min(100%,520px);height:26px;position:relative}
+.split::before{content:"";position:absolute;left:22%;right:22%;bottom:0;height:12px;border:2px solid var(--glow-dim);border-bottom:0;border-radius:10px 10px 0 0}
+.split::after{content:"";position:absolute;left:50%;top:0;height:14px;border-left:2px solid var(--glow-dim)}
+.mini-fork{display:flex;gap:6px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+.mini-fork span{font-size:.75rem;padding:2px 8px;border-radius:10px;border:1px solid var(--line);color:var(--dim)}
+.cyc,.rings{width:100%;max-width:520px;display:block;margin:0 auto}
+.cyc text,.rings text{font-family:var(--font)}
+.cmds{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.cmd{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:rgba(92,225,255,.04)}
+.cmd code{color:var(--glow);font-size:.95rem}
+.cmd div{color:var(--dim);font-size:.82rem;margin-top:2px}
+
 .warn{color:var(--amber)}.alarm{color:var(--red)}
 .timeline{list-style:none;margin:0;padding:0}
 .timeline li{display:grid;grid-template-columns:74px 1fr;gap:12px;padding:8px 0;border-top:1px solid var(--line)}
@@ -209,7 +297,6 @@ table.plain th{color:var(--dim);font-weight:500;border-top:0}
   <section id="struktur" hidden></section>
   <section id="erklaerung" hidden></section>
   <section id="freigaben" hidden></section>
-  <section id="team" hidden></section>
   <section id="auftraege" hidden></section>
   <section id="vorstellungen" hidden></section>
   <section id="ergebnisse" hidden></section>
@@ -217,10 +304,11 @@ table.plain th{color:var(--dim);font-weight:500;border-top:0}
   <section id="logbuch" hidden></section>
   <section id="ziele" hidden></section>
 </main>
+<div class="sheet" id="sheet" role="dialog" aria-modal="false" aria-label="Details"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 "use strict";
-const TABS=[["bruecke","Brücke"],["struktur","Struktur"],["erklaerung","So funktioniert's"],["freigaben","Wartet auf dich"],["team","Abteilungen und Team"],["auftraege","Aufträge"],["vorstellungen","Vorstellungen"],["ergebnisse","Ergebnisse"],["finanzen","Finanzen"],["logbuch","Logbuch"],["ziele","Ziele"]];
+const TABS=[["bruecke","Brücke"],["struktur","Stammbaum"],["erklaerung","So funktioniert's"],["freigaben","Wartet auf dich"],["auftraege","Aufträge"],["vorstellungen","Vorstellungen"],["ergebnisse","Ergebnisse"],["finanzen","Finanzen"],["logbuch","Logbuch"],["ziele","Ziele"]];
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const eur=n=>new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
@@ -238,6 +326,7 @@ function zeige(id){
   TABS.forEach(([t])=>{$("#"+t).hidden=t!==id;const b=document.getElementById("tab-"+t);if(b)b.setAttribute("aria-selected",t===id)});
   if(location.hash!=="#"+id)history.replaceState(null,"","#"+id);
   window.scrollTo(0,0);
+  if(id==="struktur"&&window.baumStart)requestAnimationFrame(window.baumStart);
 }
 function nav(){
   const offen=vorschlaege().length;
@@ -289,51 +378,127 @@ function bruecke(){
      <div class="panel wide"><h3>Nächste Fristen</h3>${fr.length?`<ul class="timeline">${fr.map(f=>`<li class="${f.tage<=14?"soon":""}"><div class="d num">${f.tage}<small>${f.tage===1?"Tag":"Tage"}</small></div><div>${esc(f.Was)}<div class="muted" style="font-size:.82rem">${esc(f.Wann)} · ${esc(f.Wer)}</div></div></li>`).join("")}</ul>`:'<p class="empty">Keine Frist mit Datum.</p>'}</div>
      <div class="panel wide"><h3>Lage</h3><ul class="list">${hinweise.join("")}${[...teil("Wartet"),...teil("Als Nächstes")].slice(0,6).map(t=>`<li>${esc(t)}</li>`).join("")||'<li class="empty">Nichts gemeldet</li>'}</ul></div>
    </div></div>`;
-  $("#bruecke svg").addEventListener("click",e=>{const g=e.target.closest(".blip");if(g){zeige("team");document.getElementById("dept-"+g.dataset.dept)?.scrollIntoView({behavior:"smooth"})}});
+  $("#bruecke svg").addEventListener("click",e=>{const g=e.target.closest(".blip");if(g){zeige("struktur");setTimeout(()=>{const el=document.getElementById("dept-"+g.dataset.dept);if(el)el.scrollIntoView({behavior:"smooth",block:"center",inline:"center"})},60)}});
   $("#bruecke svg").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.closest(".blip"))e.target.closest(".blip").dispatchEvent(new MouseEvent("click",{bubbles:true}))});
 }
 
 function struktur(){
   const t=D.team,by=r=>t.find(p=>p.rolle===r);
   const pa=by("Persönlicher Assistent"),gf=by("Geschäftsführer");
-  const node=(p,cls="")=>p?`<div class="panel bracket node ${cls}"><div class="avatar" aria-hidden="true">${esc(p.kuerzel)}</div><div><div class="name">${esc(p.name)}</div><div class="role">${esc(p.rolle)}</div><div class="job">${esc(p.aufgabe||p.staerken)}</div></div></div>`:"";
-  const mini=(p,lead)=>`<div class="mini${lead?" lead":""}"><div class="avatar" aria-hidden="true">${esc(p.kuerzel)}</div><div><div class="name">${esc(p.name)}<small>${esc(p.rolle)}${lead?" · Leitung":""}</small></div><div class="job">${esc(p.aufgabe||p.staerken)}</div></div></div>`;
-  const alle=abteilungen();
-  const vt=alle.find(a=>/vertrieb/i.test(a.Abteilung));
-  const zweige=alle.filter(a=>a!==vt).map(a=>{
+  const alle=abteilungen(),vt=alle.find(a=>/vertrieb/i.test(a.Abteilung));
+  const INFO={};let nr=0;
+  const reg=o=>{const k="n"+(nr++);INFO[k]=o;return k};
+  const person=(p,cls="")=>p?`<button class="tn ${cls}" data-k="${reg({typ:"p",p})}"><div class="avatar" aria-hidden="true">${esc(p.kuerzel)}</div><div><div class="n">${esc(p.name)}</div><div class="r">${esc(p.rolle)}</div></div></button>`:"";
+  const box=(ico,titel,unter,cls,info)=>`<button class="tn ${cls}" data-k="${reg(info)}"><div class="ico" aria-hidden="true">${ico}</div><div><div class="n">${esc(titel)}</div><div class="r">${esc(unter)}</div></div></button>`;
+  const zweig=a=>{
     const leute=a.leute.filter(p=>p!==pa&&p!==gf);
     const chef=leute.find(p=>(a.Leitung||"").includes(p.rolle));
     const rest=leute.filter(p=>p!==chef);
     const ruht=!/aktiv/i.test(a.Status||"");
-    const fuehrung=!chef&&a.Leitung?`<div class="job muted" style="font-size:.82rem">geführt von: ${esc(a.Leitung)}</div>`:"";
-    return `<div class="panel branch${ruht?" ruht":""}"><div class="bhead"><h3>${esc(a.Abteilung)}</h3><span class="pill ${ruht?"wait":"on"}">${esc(a.Status||"")} · ${leute.length}</span></div>
-      <div class="bzweck">${esc(a.Zweck||"")}</div>${fuehrung}${chef?mini(chef,true):""}${rest.map(p=>mini(p,false)).join("")}${!leute.length?'<p class="empty" style="margin:0">noch niemand eingestellt</p>':""}</div>`}).join("");
+    const liste=[...(chef?[chef]:[]),...rest];
+    return `<li id="dept-${esc(a.Abteilung)}"><div class="dept-box"><button class="dept-head${ruht?" ruht":""}" data-k="${reg({typ:"a",a,leute})}"><div class="n">${esc(a.Abteilung)}</div><div class="c">${leute.length} ${leute.length===1?"Mitarbeiter":"Mitarbeiter"}${ruht?" · "+esc(a.Status):""}</div></button>
+      ${liste.length?`<div class="members">${liste.map(p=>`<div class="${p===chef?"lead":""}">${person(p)}</div>`).join("")}</div>`:""}</div></li>`};
+  const zweige=alle.filter(a=>a!==vt).map(zweig).join("");
   const sich=D.sicherheit||{};
-  $("#struktur").innerHTML=`<h2>Struktur der Firma</h2><div class="actions" style="margin:-4px 0 10px"><button class="btn" id="zur-erk">Einfach erklärt lesen</button></div><p class="muted" style="margin-top:-6px">${t.length} Mitarbeiter · ${alle.filter(a=>/aktiv/i.test(a.Status||"")).length} aktive Abteilungen · Stand ${esc(D.erzeugt)}</p>
-  <div class="org">
-    <div class="panel bracket node chef"><div class="avatar" aria-hidden="true">★</div><div><div class="name">Du</div><div class="role">Chef</div><div class="job">gibt Ziele vor, sagt Ja oder Nein, sonst arbeitet die Firma selbst</div></div></div>
-    <div class="org-line"></div>${node(pa)}<div class="org-line"></div>${node(gf)}<div class="org-line"></div>
-    <div class="org-branches">${zweige}</div>
-    <div class="org-sub"><h3>Abgeschottete Bereiche</h3><div class="cards">
-      <div class="panel sealed"><div class="lock">ABGESCHOTTET · AUF ABRUF</div><h3 style="margin-top:4px">Bereitschaft</h3><p class="muted" style="margin:0;font-size:.9rem">Jeder Chat mit Claude. Erledigt Kleines sofort, schätzt große Aufgaben ab und gibt sie nur mit deinem Ja bereinigt an die Nachtschicht. Eigene Leute, einzige mit Zugriff aufs Heimnetz und private Mails. Details stehen bewusst nicht im Leitstand.</p></div>
-      <div class="panel sealed"><div class="lock">ABGESCHOTTET · ${esc((vt&&vt.Status||"geplant").toUpperCase())}</div><h3 style="margin-top:4px">Vertrieb</h3><p class="muted" style="margin:0;font-size:.9rem">${esc(vt&&vt.Zweck||"vermarkten und verkaufen")}. Liefert der Firma nur geprüfte Zahlen, nie Texte. Veröffentlicht nur, was du freigibst.</p></div>
-    </div></div>
-    <div class="org-sub"><h3>Kontrolle</h3><div class="cards">
-      <div class="panel"><h3>Aufsichtsrat</h3><p class="muted" style="margin:0;font-size:.9rem">Prüft jeden Sonntag die Rollen, die man nicht kündigen kann (Assistentin, Geschäftsführer, Sicherheit), und ersetzt sie bei schlechter Arbeit.</p></div>
-      <div class="panel"><h3>Prüf-Zelle</h3><p class="muted" style="margin:0;font-size:.9rem">Unabhängig, nur lesend: sucht wie ein Angreifer nach Schwachstellen. Offen: <span class="alarm">${sich.rot||0} rot</span> · <span class="warn">${sich.gelb||0} gelb</span> · ${sich.gruen||0} grün</p></div>
-    </div></div>
-    <div class="org-sub"><h3>Feste Dienste</h3><div class="chips">${(D.stamm||[]).map(x=>`<div class="chip"><b>${esc(x.Agent)}</b><span>${esc(x.Dienst)}</span></div>`).join("")}</div></div>
-  </div>`;
-  $("#zur-erk").onclick=()=>{zeige("erklaerung");window.scrollTo(0,0)};
+  const chefInfo={typ:"x",ico:"★",titel:"Du",unter:"Chef",zeilen:[["Aufgabe","gibt die Ziele vor, sagt Ja oder Nein"],["Sonst","die Firma arbeitet selbständig"]]};
+  const bereit={typ:"x",ico:"🚨",titel:"Bereitschaft",unter:"abgeschottet · jeder Chat",zeilen:[["Was","jeder Chat mit Claude"],["Klein","erledigt sie sofort"],["Groß","fragt dich, ob die Nachtschicht es macht"],["Exklusiv","Heimnetz, private Mails und Kalender"],["Im Leitstand","Details bewusst ausgeblendet"]]};
+  const vertr={typ:"x",ico:"🛒",titel:"Vertrieb",unter:"abgeschottet · "+((vt&&vt.Status)||"geplant"),zeilen:[["Zweck",(vt&&vt.Zweck)||"vermarkten und verkaufen"],["Zur Firma","nur geprüfte Zahlen, nie Texte"],["Veröffentlicht","nur, was du freigibst"]]};
+  const ar={typ:"x",ico:"🏛️",titel:"Aufsichtsrat",unter:"Kontrolle · sonntags",zeilen:[["Prüft","Assistentin, Geschäftsführer, Sicherheit und alle nicht kündbaren Rollen"],["Bei schlechter Arbeit","ersetzt er sie ohne Lücke"]]};
+  const pz={typ:"x",ico:"🛡️",titel:"Prüf-Zelle",unter:"unabhängig · nur lesend",zeilen:[["Prüft","3× pro Woche wie ein Angreifer"],["Offene Funde",`${sich.rot||0} rot · ${sich.gelb||0} gelb · ${sich.gruen||0} grün`],["Darf","nur schauen, nie etwas ändern"]]};
+  const dienste={typ:"x",ico:"⏰",titel:"Feste Dienste",unter:(D.stamm||[]).length+" Dienste nach Zeitplan",zeilen:(D.stamm||[]).map(x=>[x.Agent,x.Dienst])};
+  const ehem=D.ehemalige||[];
+  $("#struktur").innerHTML=`<h2>Stammbaum der Firma</h2>
+  <div class="tree-tools"><button class="btn" id="z-minus" aria-label="Verkleinern">−</button><button class="btn" id="z-fit">Einpassen</button><button class="btn" id="z-plus" aria-label="Vergrößern">+</button>
+    <span class="muted">${t.length} Mitarbeiter · ${alle.filter(a=>/aktiv/i.test(a.Status||"")).length} aktive Abteilungen · antippen für Details</span></div>
+  <div class="tree-wrap" id="tree-wrap"><div class="tree" id="tree"><ul><li>
+    ${box("★","Du","Chef","chef",chefInfo)}
+    <ul>
+      <li class="dashed">${box("🚨","Bereitschaft","abgeschottet · jeder Chat","sealed",bereit)}</li>
+      <li>${person(pa)}<ul><li>${person(gf)}<ul>${zweige}</ul></li></ul></li>
+      <li class="dashed">${box("🛒","Vertrieb","abgeschottet · "+((vt&&vt.Status)||"geplant"),"sealed",vertr)}</li>
+      <li class="dashed">${box("🏛️","Aufsichtsrat","Kontrolle · sonntags","ctrl",ar)}<ul><li class="dashed">${box("🛡️","Prüf-Zelle","unabhängig · nur lesend","ctrl",pz)}</li><li class="dashed">${box("⏰","Feste Dienste",(D.stamm||[]).length+" nach Zeitplan","ctrl",dienste)}</li></ul></li>
+    </ul></li></ul></div></div>
+  <div class="legend"><span><i></i>führt / gehört zu</span><span><i class="d"></i>abgeschottet oder Kontrolle</span><span>Leuchtender Ring = Abteilungsleitung</span>${ehem.length?`<span>Ehemalige: ${ehem.map(e=>esc(e.Agent)).join(", ")}</span>`:""}</div>`;
+  // Details
+  const sheet=$("#sheet");
+  const zeig=k=>{const o=INFO[k];if(!o)return;let kopf="",dl=[];
+    if(o.typ==="p"){const p=o.p;kopf=`<div class="avatar" aria-hidden="true">${esc(p.kuerzel)}</div><div><h3 style="margin:0">${esc(p.name)}</h3><div class="muted">${esc(p.rolle)} · ${esc(p.abteilung)}</div></div>`;
+      dl=[["Aufgabe",p.aufgabe],["Stärken",p.staerken],["Eigenart",p.eigenart],["Status",p.status],["Erledigt",p.erledigt],["Abnahme",p.quote],["Seit",p.eingestellt],["Fassung",(p.agent.match(/v\d+/)||[""])[0]]];}
+    else if(o.typ==="a"){const a=o.a;kopf=`<div class="ico" aria-hidden="true">🏢</div><div><h3 style="margin:0">${esc(a.Abteilung)}</h3><div class="muted">${esc(a.Status||"")}</div></div>`;
+      dl=[["Zweck",a.Zweck],["Leitung",a.Leitung],["Mitarbeiter",o.leute.map(p=>p.name).join(", ")||"noch niemand"],["Gegründet",a.Gegründet],["Grund",a.Grund]];}
+    else{kopf=`<div class="ico" aria-hidden="true">${o.ico}</div><div><h3 style="margin:0">${esc(o.titel)}</h3><div class="muted">${esc(o.unter)}</div></div>`;dl=o.zeilen;}
+    sheet.innerHTML=`<button class="btn x" id="sheet-x" aria-label="Schließen">✕</button><div class="kopf">${kopf}</div><dl>${dl.filter(z=>z[1]).map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`;
+    sheet.classList.add("open");document.onkeydown=e=>{if(e.key==="Escape")sheet.classList.remove("open")};$("#sheet-x").onclick=()=>sheet.classList.remove("open");$("#sheet-x").focus()};
+  const wrap=$("#tree-wrap"),tree=$("#tree");
+  let moved=false;
+  wrap.onclick=e=>{if(moved)return;const b=e.target.closest("[data-k]");if(b)zeig(b.dataset.k)};
+  // Zoom
+  let z=1;const setz=v=>{z=Math.max(.3,Math.min(1.6,v));tree.style.zoom=z};
+  $("#z-plus").onclick=()=>setz(z+.15);$("#z-minus").onclick=()=>setz(z-.15);
+  $("#z-fit").onclick=()=>{tree.style.zoom=1;setz((wrap.clientWidth-24)/tree.scrollWidth)};
+  // Ziehen zum Verschieben (Maus)
+  let sx=0,sy=0,sl=0,st=0,down=false;
+  wrap.onmousedown=e=>{down=true;moved=false;sx=e.clientX;sy=e.clientY;sl=wrap.scrollLeft;st=wrap.scrollTop};
+  window.addEventListener("mouseup",()=>{down=false;wrap.classList.remove("dragging");setTimeout(()=>moved=false,0)});
+  wrap.onmousemove=e=>{if(!down)return;const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)+Math.abs(dy)>5){moved=true;wrap.classList.add("dragging")}wrap.scrollLeft=sl-dx;wrap.scrollTop=st-dy};
+  // Start: auf dem Handy mittig auf die Führung schauen
+  window.baumStart=()=>{if(!wrap.clientWidth)return;tree.style.zoom=1;const fit=(wrap.clientWidth-24)/tree.scrollWidth;setz(fit>=.6?fit:.7);
+    const ziel=tree.querySelector(".tn.chef");if(ziel){const w=wrap.getBoundingClientRect(),n=ziel.getBoundingClientRect();wrap.scrollLeft+=n.left+n.width/2-(w.left+w.width/2);wrap.scrollTop=0}};
+  window.baumStart();
 }
 
 function erklaerung(){
-  const e=D.erklaerung||{},s=$("#erklaerung");
-  if(!e.html){s.innerHTML='<p class="empty">Die Erklärung ist noch nicht da.</p>';return}
-  s.innerHTML=`<div class="actions back"><button class="btn" id="erk-org">Zum Organigramm</button><button class="btn" id="erk-pdf">Als PDF sichern</button></div><article class="doc"><h2>Die Firma einfach erklärt</h2>${e.html}</article>`;
-  $("#erk-pdf").onclick=()=>{s.classList.add("printing");window.print();s.classList.remove("printing")};
-  $("#erk-org").onclick=()=>{zeige("struktur");window.scrollTo(0,0)};
+  const t=D.team||[],nm=(r,f)=>{const p=t.find(x=>x.rolle===r);return p?p.name.split(" ")[0]:f};
+  const fn=(e,titel,sub,cls="")=>`<div class="fn ${cls}"><span class="e" aria-hidden="true">${e}</span><div class="t">${esc(titel)}</div>${sub?`<div class="s">${esc(sub)}</div>`:""}</div>`;
+  const pfeil='<div class="arrow" aria-hidden="true"></div>';
+  // Kreislauf eines Mitarbeiters (SVG)
+  const cx=260,cy=200,R=130,RX=178,st=[["📝","Einstellen","Stellenbeschreibung"],["⚙️","Arbeiten","frische Claude-Instanz"],["📊","Bewerten","Leistung und Qualität"],["🔁","Verbessern","oder kündigen"]];
+  const pos=st.map((_,i)=>{const w=-Math.PI/2+i*Math.PI/2;return [cx+RX*Math.cos(w),cy+R*Math.sin(w)]});
+  const cyc=`<svg class="cyc" viewBox="0 0 520 400" role="img" aria-label="Kreislauf eines Mitarbeiters">
+    <defs><marker id="pf" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5CE1FF"/></marker></defs>
+    <ellipse cx="${cx}" cy="${cy}" rx="${RX}" ry="${R}" fill="none" stroke="#17324D" stroke-width="2"/>
+    ${pos.map((_,i)=>{const a1=-Math.PI/2+i*Math.PI/2+.42,a2=-Math.PI/2+(i+1)*Math.PI/2-.42;return `<path d="M${cx+RX*Math.cos(a1)},${cy+R*Math.sin(a1)} A${RX},${R} 0 0 1 ${cx+RX*Math.cos(a2)},${cy+R*Math.sin(a2)}" fill="none" stroke="#5CE1FF" stroke-width="2.5" marker-end="url(#pf)"/>`}).join("")}
+    <text x="${cx}" y="${cy-4}" text-anchor="middle" fill="#E6F7FF" font-size="15" font-weight="600">Mitarbeiter</text>
+    <text x="${cx}" y="${cy+15}" text-anchor="middle" fill="#7193A8" font-size="12">= eine Notiz</text>
+    ${pos.map(([x,y],i)=>`<g><rect x="${x-74}" y="${y-30}" width="148" height="60" rx="10" fill="#0E1E33" stroke="#2A7FA0"/><text x="${x}" y="${y-6}" text-anchor="middle" fill="#E6F7FF" font-size="15" font-weight="600">${st[i][0]} ${st[i][1]}</text><text x="${x}" y="${y+14}" text-anchor="middle" fill="#7193A8" font-size="12">${st[i][2]}</text></g>`).join("")}
+  </svg>`;
+  // Schutzschichten (Ringe)
+  const ringe=[["Prüf-Zelle und Aufsichtsrat schauen von außen","#2A7FA0"],["Vier Augen: Sicherheit hat Veto","#2d8f6a"],["Getrennte Räume: Privates nur in der Bereitschaft","#c99a3a"],["Inselbetrieb: kein Kontakt nach außen","#5CE1FF"],["Nur du gibst Aufträge","#FFB547"]];
+  const ringR=i=>245-i*42;
+  const rings=`<svg class="rings" viewBox="0 0 520 520" role="img" aria-label="Schutzschichten um deine Daten">
+    ${ringe.map(([txt,c],i)=>`<circle cx="260" cy="260" r="${ringR(i)}" fill="${i%2?"#0E1E33":"#0A1626"}" stroke="${c}" stroke-width="2"/>`).join("")}
+    <circle cx="260" cy="260" r="${ringR(5)}" fill="#05101e" stroke="#FF5A5A" stroke-width="2"/>
+    <defs>${ringe.map((_,i)=>{const m=ringR(i)-21;return `<path id="rb${i}" d="M${260-m},260 A${m},${m} 0 0 1 ${260+m},260"/>`}).join("")}</defs>
+    ${ringe.map(([txt,c],i)=>`<text fill="${c}" font-size="${i<3?13:12}" font-weight="600" dy="4"><textPath href="#rb${i}" startOffset="50%" text-anchor="middle">${esc(txt)}</textPath></text>`).join("")}
+    <text x="260" y="257" text-anchor="middle" fill="#fff" font-size="14" font-weight="600">🔒 Deine</text><text x="260" y="275" text-anchor="middle" fill="#fff" font-size="14" font-weight="600">Daten</text>
+  </svg>`;
+  const s=$("#erklaerung");
+  s.innerHTML=`<h2>So funktioniert die Firma</h2>
+  <div class="ex-sec"><h3>Woher die Arbeit kommt und wohin sie geht</h3><div class="flow">
+    <div class="row">
+      ${fn("💬","Du im Chat","die Bereitschaft","you").replace("</div></div>",'</div><div class="mini-fork"><span>klein → sofort</span><span>groß → dein Ja</span></div></div>')}
+      ${fn("💡","Strategie",nm("Stratege","Stratege")+" findet Aufgaben aus deinen Zielen")}
+      ${fn("🛡️","Prüf-Zelle","gefundene Schwachstellen")}
+    </div>
+    <div class="merge" aria-hidden="true"></div>
+    ${fn("📥","Auftragsbuch","alles landet hier","hub")}${pfeil}
+    ${fn("🌙","Nachtschicht 03:07",nm("Geschäftsführer","Geschäftsführer")+" verteilt die Arbeit")}${pfeil}
+    ${fn("🛠️","Fachleute arbeiten","recherchieren, schreiben, programmieren")}${pfeil}
+    <div class="row">${fn("🔐","Sicherheit",nm("Sicherheitsbeauftragter","Sicherheit")+" prüft, hat Veto")}${fn("✅","Qualität",nm("Qualitätsprüfer","Qualität")+" nimmt ab")}</div>${pfeil}
+    ${fn("📦","Ergebnis","im Vault, im Leitstand, im Morgen-Briefing","hub")}
+    <div class="split" aria-hidden="true"></div>
+    <div class="row">${fn("✔️","Intern","fertig, nichts zu tun","ok")}${fn("✋","Wirkt nach außen","Geld, Mails, Veröffentlichen: wartet auf dein Ja","you")}</div>
+  </div></div>
+  <div class="ex-sec"><h3>Lebenslauf eines Mitarbeiters</h3>${cyc}</div>
+  <div class="ex-sec"><h3>Schutzschichten um deine Daten</h3>${rings}</div>
+  <div class="ex-sec"><h3>Was du sagen kannst</h3><div class="cmds">
+    ${[["Status Firma","Zusammenfassung von Clara"],["V-004 ja / nein","Vorschlag annehmen oder ablehnen"],["Firma, leg los","Schicht sofort statt nachts"],["Firma stopp","Notbremse"],["Mach eine Abteilung für …","sicher eingegliedert nach Standard"],["Gib der Firma: …","geht auch, ist aber nicht nötig"]].map(([c,d])=>`<div class="cmd"><code>${esc(c)}</code><div>${esc(d)}</div></div>`).join("")}
+  </div></div>
+  <div class="actions"><button class="btn" id="erk-org">Zum Stammbaum</button>${(D.erklaerung||{}).html?'<button class="btn" id="erk-txt">Textfassung als PDF</button>':""}</div>`;
+  $("#erk-org").onclick=()=>zeige("struktur");
+  const tb=$("#erk-txt");if(tb)tb.onclick=()=>{const alt=s.innerHTML;s.innerHTML=`<article class="doc"><h2>Die Firma einfach erklärt</h2>${D.erklaerung.html}</article>`;s.classList.add("printing");window.print();s.classList.remove("printing");s.innerHTML=alt;erklaerung()};
 }
+
 function freigaben(){
   const v=vorschlaege(),lage=Object.entries(D.lage||{}).find(([t])=>t.includes("Wartet"))?.[1]||[];
   $("#freigaben").innerHTML=`<h2>Wartet auf dich</h2>
@@ -439,7 +604,7 @@ async function laden(){
     D=await r.json();
   }catch(e){$("#stand").textContent="daten.json fehlt oder ist kaputt. Im Claude-Chat „Leitstand aktualisieren“ schreiben.";return}
   $("#stand").textContent=D.stand;$("#erzeugt").textContent="Daten von "+D.erzeugt;
-  nav();bruecke();struktur();erklaerung();freigaben();team();auftraege();vorstellungen();ergebnisse();finanzen();logbuch();ziele();
+  nav();bruecke();struktur();erklaerung();freigaben();auftraege();vorstellungen();ergebnisse();finanzen();logbuch();ziele();
   const h=location.hash.slice(1);zeige(TABS.some(([t])=>t===h)?h:"bruecke");
 }
 laden();
