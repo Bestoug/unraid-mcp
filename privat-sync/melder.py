@@ -33,7 +33,7 @@ TIMEOUT = 10
 # Typ → (Stufe, Titel, Text). Platzhalter nur {anzahl}, gefüllt ausschließlich mit int.
 MELDUNGEN = {
     "kernrolle_fehlt": ("kritisch", "Privatfirma: Kernrolle fehlt",
-                        "Eine Kernrolle der Privatfirma fehlt. Bitte die App Privatfirma öffnen."),
+                        "Eine Kernrolle der Privatfirma fehlt. Bitte My App öffnen."),
     "sicherheit_rot": ("kritisch", "Sicherheits-Check: Rot",
                        "Der Sicherheits-Check meldet Rot. Bitte den Sicherheitsbericht im Vault lesen."),
     "pruefzelle_rot": ("kritisch", "Prüf-Zelle: neuer roter Fund",
