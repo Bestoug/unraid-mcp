@@ -2,7 +2,8 @@
 """Leitstand-Daten: liest den Firmenordner aus dem Firmen-Vault und schreibt daten.json für den Leitstand.
 
 Gehört zu [[Leitstand]]. Ohne KI, ohne Netz, nur Standardbibliothek.
-Liest NUR den Ordner "01 Firma" des Firmen-Vaults (Repo firma-vault). Das Befund-Buch der Prüf-Zelle
+Liest NUR den Ordner "01 Firma" des Firmen-Vaults (Repo firma-vault) und aus "00 Eingang/Schleuse/Eingang.md"
+nur die Tabelle im Abschnitt "Übernommen" (nie das eingefügte Wochen-Update). Das Befund-Buch der Prüf-Zelle
 liegt im privaten Vault und wird nicht mehr gelesen; das Feld "sicherheit" ist deshalb immer null.
 Alles Ausgegebene wird HTML-maskiert und auf private Angaben (Mailadressen, Heimnetz, Wohnadresse) gefiltert.
 
@@ -193,6 +194,38 @@ def schichten(t: str):
     return erg
 
 
+def sicherheit_lage(lage_t: str):
+    """Abschnitt „⚠️ Sicherheit“ im Lagebild: Zeilen „- 🔴 …“ / „- 🟡 …“ (oder „- keine“)."""
+    erg = []
+    for z in suche(abschnitte(lage_t), "Sicherheit"):
+        m = re.match(r"^- \s*(🔴|🟡)\s*(.*)$", z.strip())
+        if m and text(m.group(2)):
+            erg.append({"stufe": "rot" if m.group(1) == "🔴" else "gelb", "text": text(m.group(2))})
+    return erg
+
+
+# Abschnitte im Chef-Profil (Teil der Überschrift), die in der App unter „Was die Firma gelernt hat“ erscheinen → Titel
+GELERNT = {"Aus der Wochen-Übergabe": "Aus der Wochen-Übergabe", "Rückmeldungen von": "Rückmeldung",
+           "Ergebnisse will": "So will der Chef Ergebnisse"}
+
+
+def gelernt(profil_t: str, eingang_t: str):
+    erg = []
+    teile = abschnitte(profil_t)
+    for kopf, titel in GELERNT.items():
+        for z in suche(teile, kopf):
+            if z.startswith("- "):
+                t = text(z[2:])
+                if t and not t.startswith("(noch"):
+                    erg.append({"titel": titel, "text": t})
+    for r in tabelle(suche(abschnitte(eingang_t), "Übernommen")):
+        t = r.get("Übernommen ins Chef-Profil", "")
+        if t and t not in ("–", "-"):
+            woche = r.get("Woche", "")
+            erg.append({"titel": "Wochen-Übergabe " + woche if woche not in ("", "–") else "Wochen-Übergabe", "text": t})
+    return erg
+
+
 def main(vault: Path, ziel: Path):
     firma = vault / "01 Firma"
     lies = lambda p: (p.read_text(encoding="utf-8") if p.exists() else "")
@@ -309,6 +342,8 @@ def main(vault: Path, ziel: Path):
         "sicherheit": None,  # Befund-Buch bleibt im privaten Vault
         "kontingent": {"woche": woche, "woche_max": 30, "schicht_max": 8},
         "wochen": wochenvergleich, "erklaerung": erklaerung, "verkauf": verkauf[-12:],
+        "sicherheit_lage": sicherheit_lage(lage_t),
+        "gelernt": gelernt(lies(firma / "Chef-Profil.md"), lies(vault / "00 Eingang" / "Schleuse" / "Eingang.md")),
     }
     roh = json.dumps(daten, ensure_ascii=False, separators=(",", ":"))
     roh = sauber(roh)

@@ -4,7 +4,7 @@ Kleiner Begleit-Container für Philipps Leitstand (Übersicht der Agenten-Firma)
 
 ## Sicherheit
 - Nur-Lese-Deploy-Key, nur für ein Repository; der geheime Teil verlässt `/schluessel` nie
-- Teil-Klon (`--filter=blob:none --sparse`): Auf dem Server landet nur der Ordner `01 Firma`, keine anderen Notizen. Das Befund-Buch der Prüf-Zelle bleibt im privaten Vault; in `daten.json` ist `sicherheit` deshalb `null`
+- Teil-Klon (`--filter=blob:none --sparse`): Auf dem Server landen nur der Ordner `01 Firma` und `00 Eingang/Schleuse/Eingang.md` (daraus liest das Skript nur die Tabelle „Übernommen“, nie das eingefügte Wochen-Update), keine anderen Notizen. Das Befund-Buch der Prüf-Zelle bleibt im privaten Vault; in `daten.json` ist `sicherheit` deshalb `null`
 - Der ausgeführte Code steckt im Image, nie in den geholten Daten
 - GitHub-Hostschlüssel fest eingetragen
 - Kein offener Port, kein Webserver, keine KI
@@ -21,3 +21,7 @@ Kleiner Begleit-Container für Philipps Leitstand (Übersicht der Agenten-Firma)
 - Standard-Repo ist jetzt `firma-vault` (änderbar über `LEITSTAND_REPO`). Ein vorhandener Klon eines anderen Repos wird beim Start verworfen und neu geholt.
 - GitHub erlaubt einen Deploy-Key nur in einem Repository: den öffentlichen Schlüssel aus `/status/oeffentlicher-schluessel.txt` beim alten Repo entfernen und bei `firma-vault` als Nur-Lese-Deploy-Key eintragen.
 - Datenformat: wie bisher, nur `sicherheit` ist `null` (Befund-Buch nicht mehr im Firmen-Vault).
+- Neu für die App „Firma“: `sicherheit_lage` (Zeilen 🔴/🟡 aus dem Lagebild-Abschnitt „⚠️ Sicherheit“) und `gelernt` (aus dem Chef-Profil und der Tabelle „Übernommen“ der Schleuse). Kein Melder: Die Firma meldet sich nicht über Home Assistant.
+
+## Testen
+`python3 -m unittest discover -s leitstand-sync -p "test_*.py"` (nur erfundene Daten)

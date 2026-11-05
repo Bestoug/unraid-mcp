@@ -1,12 +1,14 @@
 #!/bin/sh
 # Leitstand-Sync (Claude, 05.11.2026)
 # Ordner: /schluessel (appdata, geheimer Schlüssel + Klon), /status (öffentlicher Schlüssel + Status), /ausgabe (daten.json)
-# Code kommt nur aus diesem Image, nie aus GitHub-Daten. Aus dem Firmen-Vault (firma-vault) wird nur der Ordner „01 Firma“ geholt.
+# Code kommt nur aus diesem Image, nie aus GitHub-Daten. Aus dem Firmen-Vault (firma-vault) werden nur der Ordner „01 Firma“ und „00 Eingang/Schleuse/Eingang.md“ geholt.
 set -u
 REPO_URL="${LEITSTAND_REPO:-git@github.com:Bestoug/firma-vault.git}"
 INTERVALL="${LEITSTAND_INTERVALL:-600}"
 REPO=/schluessel/vault
 STATUS=/status/status.json
+# Teil-Klon: nur „01 Firma“ und die Eingangs-Notiz der Schleuse (davon liest das Skript nur die Tabelle „Übernommen“)
+teile() { git -C "$REPO" sparse-checkout set --no-cone '/01 Firma/' '/00 Eingang/Schleuse/Eingang.md'; }
 mkdir -p /schluessel /status /ausgabe
 chmod 700 /schluessel
 [ -f /schluessel/id_ed25519 ] || ssh-keygen -t ed25519 -N "" -C "leitstand-nur-lesen" -f /schluessel/id_ed25519 -q
@@ -30,10 +32,12 @@ while true; do
   if [ ! -d "$REPO/.git" ]; then
     rm -rf "$REPO"
     if git clone -q --depth 1 --filter=blob:none --sparse "$REPO_URL" "$REPO" 2>/tmp/git.err; then
-      git -C "$REPO" sparse-checkout set --no-cone '/01 Firma/' 2>>/tmp/git.err
+      teile 2>>/tmp/git.err
     fi
   else
     git -C "$REPO" fetch -q --depth 1 origin main 2>/tmp/git.err && git -C "$REPO" reset -q --hard origin/main 2>>/tmp/git.err
+    # Teil-Klon-Liste bei jedem Lauf setzen (ein älterer Klon hat sonst noch die alte Liste)
+    teile 2>>/tmp/git.err
   fi
   if [ ! -d "$REPO/.git" ]; then
     melde false "Kein Zugriff auf GitHub: Schluessel noch nicht freigeschaltet oder kein Netz" ""
