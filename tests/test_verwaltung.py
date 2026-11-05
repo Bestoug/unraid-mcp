@@ -369,3 +369,19 @@ def test_details_zeigt_geraete(tmp_path, monkeypatch):
     monkeypatch.setattr(v, "_docker", lambda s: D())
     r = v.details(S(tmp_path), "Jellyfin")
     assert r["geraete"] == ["/dev/dri"] and r["benutzer"] == "root"
+
+
+def test_geheimnisse_auch_webhook_und_privatfilter_ausgeblendet():
+    from unraid_mcp.verwaltung import _ohne_geheimnisse
+    aus = _ohne_geheimnisse({"HA_WEBHOOK_URL": "https://example.org/api/webhook/abc",
+                             "LEITSTAND_PRIVAT": "wort1,wort2", "PRIVAT_FILTER": "x",
+                             "API_KEY": "k", "TZ": "Europe/Berlin"})
+    assert aus["HA_WEBHOOK_URL"] == "***" and aus["LEITSTAND_PRIVAT"] == "***"
+    assert aus["PRIVAT_FILTER"] == "***" and aus["API_KEY"] == "***"
+    assert aus["TZ"] == "Europe/Berlin"
+
+
+def test_webui_nutzt_adresse_aus_umgebung():
+    from types import SimpleNamespace
+    from unraid_mcp.verwaltung import _server_host
+    assert _server_host(SimpleNamespace(unraid_url="http://192.0.2.10/graphql")) == "192.0.2.10"

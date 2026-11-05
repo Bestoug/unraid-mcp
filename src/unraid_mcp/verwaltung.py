@@ -33,7 +33,8 @@ from .unraid import UnraidFehler
 
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,62}$")
 VAR_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-GEHEIM_RE = re.compile(r"(PASS|PWD|KEY|TOKEN|SECRET|CRED|AUTH|DSN|COOKIE)", re.I)
+# WEBHOOK: Webhook-Adressen enthalten die geheime ID; PRIVAT/FILTER: private Filterwörter (z. B. LEITSTAND_PRIVAT)
+GEHEIM_RE = re.compile(r"(PASS|PWD|KEY|TOKEN|SECRET|CRED|AUTH|DSN|COOKIE|WEBHOOK|PRIVAT|FILTER)", re.I)
 # Variablen, mit denen ein erlaubtes Image fremden Code nachladen könnte
 CODE_VARIABLEN = re.compile(r"^(DOCKER_MODS|INSTALL_\w*|LD_\w*|PATH|PYTHONPATH|PYTHONSTARTUP|NODE_OPTIONS|PERL5OPT|BASH_ENV|ENV)$", re.I)
 STEUERZEICHEN = re.compile(r"[\x00-\x1f\x7f]")
@@ -563,7 +564,12 @@ def _anlegen(s: Settings, name: str, image: str, ports: list[dict], ordner: list
                    f"Rückweg: Container stoppen und in Unraid entfernen (Daten in appdata bleiben).")
     return {"container": name, "status": (insp.get("State") or {}).get("Status"), "image": image,
             "ports": ports, "ordner": ordner, "variablen": _ohne_geheimnisse(variablen),
-            "vorlage": f"my-{name}.xml", "webui": f"http://192.168.2.113:{ports[0]['host']}" if ports else None}
+            "vorlage": f"my-{name}.xml", "webui": f"http://{_server_host(s)}:{ports[0]['host']}" if ports else None}
+
+
+def _server_host(s: Settings) -> str:
+    """Adresse des Servers aus UNRAID_URL (steht nur in der Umgebung, nicht im Code)."""
+    return urllib.parse.urlparse(s.unraid_url).hostname or "tower.local"
 
 
 def neu_erstellen(s: Settings, d: Docker, insp: dict, body: dict) -> dict:

@@ -22,7 +22,7 @@ def _liste(name: str) -> tuple[str, ...]:
 
 @dataclass(frozen=True)
 class Settings:
-    unraid_url: str               # z. B. http://192.168.2.113/graphql
+    unraid_url: str               # z. B. http://tower.local/graphql (Heimnetz-Adresse des Servers)
     unraid_api_key: str           # API-Schlüssel aus Unraid (Einstellungen → Management Access → API Keys)
     access_token: str             # geheimer Bearer-Token für Claude
     arbeit_dir: str = "/arbeit"   # Claudes Arbeitsordner (lesen + schreiben)

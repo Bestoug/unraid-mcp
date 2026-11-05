@@ -36,7 +36,7 @@ Kleiner MCP-Server, der Claude Zugriff auf einen **Unraid-Server** gibt. Läuft 
 ## Umgebungsvariablen
 | Variable | Bedeutung |
 |---|---|
-| `UNRAID_URL` | Adresse der API, z. B. `http://192.168.2.113/graphql` |
+| `UNRAID_URL` | Adresse der API, z. B. `http://<Heimnetz-Adresse des Servers>/graphql` |
 | `UNRAID_API_KEY` | API-Schlüssel (Unraid → Einstellungen → Management Access → API Keys) |
 | `MCP_ACCESS_TOKEN` | langer Zufallswert (mind. 32 Zeichen), z. B. `openssl rand -hex 32` |
 | `ARBEIT_ORDNER` | Arbeitsordner im Container, Standard `/arbeit` |

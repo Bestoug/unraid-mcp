@@ -20,7 +20,7 @@ if grep -q 'Target="VERWALTUNG"' "$V"; then
   exit 0
 fi
 
-JF_URL="http://192.168.2.113:8096"
+JF_URL="${JF_URL:-http://$(hostname -I | awk '{print $1}'):8096}"
 echo "Jellyfin-API-Schlüssel einfügen (Jellyfin → Dashboard → API-Schlüssel → +, Name claude)."
 echo "Die Eingabe ist unsichtbar. Leer lassen = Jellyfin-Werkzeuge später einrichten."
 read -rs -p "Schlüssel: " JF_KEY

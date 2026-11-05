@@ -101,11 +101,11 @@ def test_nur_lesen_modus(monkeypatch):
 
 def test_settings(monkeypatch):
     monkeypatch.setenv("MCP_ACCESS_TOKEN", "x" * 40)
-    monkeypatch.setenv("UNRAID_URL", "http://192.168.2.113/")
+    monkeypatch.setenv("UNRAID_URL", "http://192.0.2.10/")
     monkeypatch.setenv("UNRAID_API_KEY", "k")
     monkeypatch.setenv("GESCHUETZTE_CONTAINER", "Jellyfin, icloud-mcp")
     s = Settings.from_env()
-    assert s.unraid_url == "http://192.168.2.113/graphql"
+    assert s.unraid_url == "http://192.0.2.10/graphql"
     assert s.geschuetzte_container == ("icloud-mcp", "jellyfin", "unraid-mcp")
     monkeypatch.setenv("MCP_ACCESS_TOKEN", "kurz")
     with pytest.raises(RuntimeError):
