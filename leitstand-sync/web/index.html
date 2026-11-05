@@ -362,7 +362,7 @@ function bruecke(){
   const k=D.kontingent,pct=Math.min(1,(k.woche||0)/(k.woche_max||30)),C=2*Math.PI*30,kFarbe=pct>=1?"#FF5A5A":pct>=.8?"#FFB547":"#5CE1FF";
   const fr=(D.finanzen.fristen||[]).filter(f=>f.tage!=null&&f.tage>=0).sort((a,b)=>a.tage-b.tage).slice(0,4);
   const hinweise=[];if(pct>=.8)hinweise.push(`<li class="${pct>=1?"alarm":"warn"}">Kontingent: ${k.woche} von ${k.woche_max} Einsätzen diese Woche verbraucht${pct>=1?" – die Firma pausiert bis Montag":""}</li>`);if(alt())hinweise.push(`<li class="warn">Die Daten sind älter als eine Stunde. Die automatische Aktualisierung prüfen.</li>`);
-  const s=D.sicherheit,sOk=!s.rot&&!s.gelb;
+  const s=D.sicherheit,sOk=s&&!s.rot&&!s.gelb;
   const offenA=D.auftraege.filter(a=>/Eingang|Arbeit|Prüfung|Streit/.test(a.spalte)).length;
   const lage=D.lage||{},teil=k=>Object.entries(lage).find(([t])=>t.includes(k))?.[1]||[];
   $("#bruecke").innerHTML=`<div class="bridge">
@@ -372,7 +372,7 @@ function bruecke(){
      <div class="panel readout glow"><div class="big num">${offenA}</div><div class="lbl">Aufträge in der Pipeline</div></div>
      <div class="panel readout"><div class="ring"><svg width="74" height="74" viewBox="0 0 74 74" aria-hidden="true"><circle cx="37" cy="37" r="30" fill="none" stroke="#17324D" stroke-width="7"/><circle cx="37" cy="37" r="30" fill="none" stroke="${kFarbe}" stroke-width="7" stroke-dasharray="${C*pct} ${C}" transform="rotate(-90 37 37)" stroke-linecap="round"/></svg>
        <div><div class="big num" style="font-size:1.8rem">${k.woche} / ${k.woche_max}</div><div class="lbl">Einsätze diese Woche (max. ${k.schicht_max} je Schicht)</div></div></div></div>
-     <div class="panel readout"><div class="big" style="font-size:1.6rem;color:${sOk?"var(--green)":"var(--red)"}">${sOk?"Keine offenen Funde":`${s.rot} kritisch, ${s.gelb} mittel`}</div><div class="lbl">Sicherheit laut Prüf-Zelle · ${s.laeufe} Prüfläufe</div></div>
+     ${s?`<div class="panel readout"><div class="big" style="font-size:1.6rem;color:${sOk?"var(--green)":"var(--red)"}">${sOk?"Keine offenen Funde":`${s.rot} kritisch, ${s.gelb} mittel`}</div><div class="lbl">Sicherheit laut Prüf-Zelle · ${s.laeufe} Prüfläufe</div></div>`:""}
      <div class="panel readout"><div class="big num" style="font-size:1.8rem">${eur(D.finanzen.summen["Gewinn (vorläufig)"])}</div><div class="lbl">Gewinn 2026 (Einnahmen ${eur(D.finanzen.summen.Einnahmen)}, Ausgaben ${eur(D.finanzen.summen.Ausgaben)})</div></div>
      <div class="panel readout"><div class="big num" style="font-size:1.8rem">${abteilungen().length}</div><div class="lbl">Abteilungen · ${D.stamm.length} Daueraufgaben</div></div>
      <div class="panel wide"><h3>Nächste Fristen</h3>${fr.length?`<ul class="timeline">${fr.map(f=>`<li class="${f.tage<=14?"soon":""}"><div class="d num">${f.tage}<small>${f.tage===1?"Tag":"Tage"}</small></div><div>${esc(f.Was)}<div class="muted" style="font-size:.82rem">${esc(f.Wann)} · ${esc(f.Wer)}</div></div></li>`).join("")}</ul>`:'<p class="empty">Keine Frist mit Datum.</p>'}</div>
@@ -558,7 +558,7 @@ function vOffen(v){
   zeige("vorstellungen");dokZeigen("vorstellungen",kopf,v.html,vorstellungen);
 }
 function ergebnisse(){
-  dokListe("ergebnisse","Ergebnisse",D.ergebnisse.map(r=>({t:r.titel,k:r.kurz,open:()=>dokZeigen("ergebnisse",`<h2>${esc(r.titel)}</h2>`,`<h3>Verstanden als</h3><p>${esc(r.kurz)}</p><h3>Inhalt</h3><ul>${r.gliederung.map(g=>`<li>${esc(g)}</li>`).join("")}</ul><p class="muted">Den vollständigen Text findest du in Obsidian unter Agenten-Firma › Ergebnisse.</p>`,ergebnisse)})),"Noch keine fertigen Ergebnisse.");
+  dokListe("ergebnisse","Ergebnisse",D.ergebnisse.map(r=>({t:r.titel,k:r.kurz,open:()=>dokZeigen("ergebnisse",`<h2>${esc(r.titel)}</h2>`,`<h3>Verstanden als</h3><p>${esc(r.kurz)}</p><h3>Inhalt</h3><ul>${r.gliederung.map(g=>`<li>${esc(g)}</li>`).join("")}</ul><p class="muted">Den vollständigen Text findest du in Obsidian unter Firma › Ergebnisse.</p>`,ergebnisse)})),"Noch keine fertigen Ergebnisse.");
 }
 
 function finanzen(){

@@ -1,9 +1,9 @@
 #!/bin/sh
 # Leitstand-Sync (Claude, 05.11.2026)
 # Ordner: /schluessel (appdata, geheimer Schlüssel + Klon), /status (öffentlicher Schlüssel + Status), /ausgabe (daten.json)
-# Code kommt nur aus diesem Image, nie aus GitHub-Daten. Aus dem Vault wird nur der Firmenordner geholt.
+# Code kommt nur aus diesem Image, nie aus GitHub-Daten. Aus dem Firmen-Vault (firma-vault) wird nur der Ordner „01 Firma“ geholt.
 set -u
-REPO_URL="${LEITSTAND_REPO:-git@github.com:Bestoug/obsidian-vault.git}"
+REPO_URL="${LEITSTAND_REPO:-git@github.com:Bestoug/firma-vault.git}"
 INTERVALL="${LEITSTAND_INTERVALL:-600}"
 REPO=/schluessel/vault
 STATUS=/status/status.json
@@ -25,10 +25,12 @@ melde() {
 }
 
 while true; do
+  # Klon eines anderen Repos (z. B. noch vom alten Vault) verwerfen und neu holen
+  if [ -d "$REPO/.git" ] && [ "$(git -C "$REPO" remote get-url origin 2>/dev/null)" != "$REPO_URL" ]; then rm -rf "$REPO"; fi
   if [ ! -d "$REPO/.git" ]; then
     rm -rf "$REPO"
     if git clone -q --depth 1 --filter=blob:none --sparse "$REPO_URL" "$REPO" 2>/tmp/git.err; then
-      git -C "$REPO" sparse-checkout set --no-cone '/01 Projekte/Agenten-Firma/' '/01 Projekte/Prüf-Zelle/Befund-Buch.md' 2>>/tmp/git.err
+      git -C "$REPO" sparse-checkout set --no-cone '/01 Firma/' 2>>/tmp/git.err
     fi
   else
     git -C "$REPO" fetch -q --depth 1 origin main 2>/tmp/git.err && git -C "$REPO" reset -q --hard origin/main 2>>/tmp/git.err

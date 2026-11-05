@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Leitstand-Daten: liest den Firmenordner der Agenten-Firma und schreibt daten.json für den Leitstand.
+"""Leitstand-Daten: liest den Firmenordner aus dem Firmen-Vault und schreibt daten.json für den Leitstand.
 
 Gehört zu [[Leitstand]]. Ohne KI, ohne Netz, nur Standardbibliothek.
-Liest NUR "01 Projekte/Agenten-Firma" und vom Befund-Buch der Prüf-Zelle nur die Anzahl offener Funde.
-Den Ordner "01 Projekte/Bereitschaft" liest es nie. Alles Ausgegebene wird HTML-maskiert und
-auf private Angaben (Mailadressen, Heimnetz, Wohnadresse) gefiltert.
+Liest NUR den Ordner "01 Firma" des Firmen-Vaults (Repo firma-vault). Das Befund-Buch der Prüf-Zelle
+liegt im privaten Vault und wird nicht mehr gelesen; das Feld "sicherheit" ist deshalb immer null.
+Alles Ausgegebene wird HTML-maskiert und auf private Angaben (Mailadressen, Heimnetz, Wohnadresse) gefiltert.
 
 Aufruf: python3 -I leitstand_daten.py <vault-ordner> <ziel/daten.json>
 Läuft automatisch im Container leitstand-sync auf Unraid (Image ghcr.io/bestoug/leitstand-sync).
@@ -194,7 +194,7 @@ def schichten(t: str):
 
 
 def main(vault: Path, ziel: Path):
-    firma = vault / "01 Projekte" / "Agenten-Firma"
+    firma = vault / "01 Firma"
     lies = lambda p: (p.read_text(encoding="utf-8") if p.exists() else "")
 
     personal = abschnitte(lies(firma / "Personal.md"))
@@ -243,11 +243,6 @@ def main(vault: Path, ziel: Path):
         m = re.match(r"^\d+\.\s+\*\*(.+?)\*\*\s*(.*)", z)
         if m:
             ziele.append({"titel": text(m.group(1)).rstrip(":"), "text": text(m.group(2)).split("→")[0].strip(" :")})
-
-    befund = abschnitte(lies(vault / "01 Projekte" / "Prüf-Zelle" / "Befund-Buch.md"))
-    offen = "\n".join(suche(befund, "Offene Funde"))
-    sicherheit = {"rot": offen.count("🔴"), "gelb": offen.count("🟡"), "gruen": offen.count("🟢"),
-                  "laeufe": len([z for z in suche(befund, "Läufe") if re.match(r"^- \d", z)])}
 
     # Einfache Firmen-Erklärung (Notiz „Firma einfach erklärt“), als sicher maskiertes HTML
     efm, erest = frontmatter(lies(firma / "Firma einfach erklärt.md"))
@@ -311,7 +306,7 @@ def main(vault: Path, ziel: Path):
         "ehemalige": ehemalige, "auftraege": auftr, "vorstellungen": vorst,
         "ergebnisse": ergebnisse, "schichten": sch, "ziele": ziele,
         "finanzen": {"summen": summen, "grenzen": grenzen, "fristen": fristen},
-        "sicherheit": sicherheit,
+        "sicherheit": None,  # Befund-Buch bleibt im privaten Vault
         "kontingent": {"woche": woche, "woche_max": 30, "schicht_max": 8},
         "wochen": wochenvergleich, "erklaerung": erklaerung, "verkauf": verkauf[-12:],
     }
