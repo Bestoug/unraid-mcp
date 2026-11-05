@@ -207,6 +207,7 @@ table.plain th{color:var(--dim);font-weight:500;border-top:0}
 <main>
   <section id="bruecke"></section>
   <section id="struktur" hidden></section>
+  <section id="erklaerung" hidden></section>
   <section id="freigaben" hidden></section>
   <section id="team" hidden></section>
   <section id="auftraege" hidden></section>
@@ -219,7 +220,7 @@ table.plain th{color:var(--dim);font-weight:500;border-top:0}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 "use strict";
-const TABS=[["bruecke","Brücke"],["struktur","Struktur"],["freigaben","Wartet auf dich"],["team","Abteilungen und Team"],["auftraege","Aufträge"],["vorstellungen","Vorstellungen"],["ergebnisse","Ergebnisse"],["finanzen","Finanzen"],["logbuch","Logbuch"],["ziele","Ziele"]];
+const TABS=[["bruecke","Brücke"],["struktur","Struktur"],["erklaerung","So funktioniert's"],["freigaben","Wartet auf dich"],["team","Abteilungen und Team"],["auftraege","Aufträge"],["vorstellungen","Vorstellungen"],["ergebnisse","Ergebnisse"],["finanzen","Finanzen"],["logbuch","Logbuch"],["ziele","Ziele"]];
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const eur=n=>new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
@@ -308,7 +309,7 @@ function struktur(){
     return `<div class="panel branch${ruht?" ruht":""}"><div class="bhead"><h3>${esc(a.Abteilung)}</h3><span class="pill ${ruht?"wait":"on"}">${esc(a.Status||"")} · ${leute.length}</span></div>
       <div class="bzweck">${esc(a.Zweck||"")}</div>${fuehrung}${chef?mini(chef,true):""}${rest.map(p=>mini(p,false)).join("")}${!leute.length?'<p class="empty" style="margin:0">noch niemand eingestellt</p>':""}</div>`}).join("");
   const sich=D.sicherheit||{};
-  $("#struktur").innerHTML=`<h2>Struktur der Firma</h2><p class="muted" style="margin-top:-6px">${t.length} Mitarbeiter · ${alle.filter(a=>/aktiv/i.test(a.Status||"")).length} aktive Abteilungen · Stand ${esc(D.erzeugt)}</p>
+  $("#struktur").innerHTML=`<h2>Struktur der Firma</h2><div class="actions" style="margin:-4px 0 10px"><button class="btn" id="zur-erk">Einfach erklärt lesen</button></div><p class="muted" style="margin-top:-6px">${t.length} Mitarbeiter · ${alle.filter(a=>/aktiv/i.test(a.Status||"")).length} aktive Abteilungen · Stand ${esc(D.erzeugt)}</p>
   <div class="org">
     <div class="panel bracket node chef"><div class="avatar" aria-hidden="true">★</div><div><div class="name">Du</div><div class="role">Chef</div><div class="job">gibt Ziele vor, sagt Ja oder Nein, sonst arbeitet die Firma selbst</div></div></div>
     <div class="org-line"></div>${node(pa)}<div class="org-line"></div>${node(gf)}<div class="org-line"></div>
@@ -323,8 +324,16 @@ function struktur(){
     </div></div>
     <div class="org-sub"><h3>Feste Dienste</h3><div class="chips">${(D.stamm||[]).map(x=>`<div class="chip"><b>${esc(x.Agent)}</b><span>${esc(x.Dienst)}</span></div>`).join("")}</div></div>
   </div>`;
+  $("#zur-erk").onclick=()=>{zeige("erklaerung");window.scrollTo(0,0)};
 }
 
+function erklaerung(){
+  const e=D.erklaerung||{},s=$("#erklaerung");
+  if(!e.html){s.innerHTML='<p class="empty">Die Erklärung ist noch nicht da.</p>';return}
+  s.innerHTML=`<div class="actions back"><button class="btn" id="erk-org">Zum Organigramm</button><button class="btn" id="erk-pdf">Als PDF sichern</button></div><article class="doc"><h2>Die Firma einfach erklärt</h2>${e.html}</article>`;
+  $("#erk-pdf").onclick=()=>{s.classList.add("printing");window.print();s.classList.remove("printing")};
+  $("#erk-org").onclick=()=>{zeige("struktur");window.scrollTo(0,0)};
+}
 function freigaben(){
   const v=vorschlaege(),lage=Object.entries(D.lage||{}).find(([t])=>t.includes("Wartet"))?.[1]||[];
   $("#freigaben").innerHTML=`<h2>Wartet auf dich</h2>
@@ -430,7 +439,7 @@ async function laden(){
     D=await r.json();
   }catch(e){$("#stand").textContent="daten.json fehlt oder ist kaputt. Im Claude-Chat „Leitstand aktualisieren“ schreiben.";return}
   $("#stand").textContent=D.stand;$("#erzeugt").textContent="Daten von "+D.erzeugt;
-  nav();bruecke();struktur();freigaben();team();auftraege();vorstellungen();ergebnisse();finanzen();logbuch();ziele();
+  nav();bruecke();struktur();erklaerung();freigaben();team();auftraege();vorstellungen();ergebnisse();finanzen();logbuch();ziele();
   const h=location.hash.slice(1);zeige(TABS.some(([t])=>t===h)?h:"bruecke");
 }
 laden();

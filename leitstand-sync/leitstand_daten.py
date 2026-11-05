@@ -249,6 +249,11 @@ def main(vault: Path, ziel: Path):
     sicherheit = {"rot": offen.count("🔴"), "gelb": offen.count("🟡"), "gruen": offen.count("🟢"),
                   "laeufe": len([z for z in suche(befund, "Läufe") if re.match(r"^- \d", z)])}
 
+    # Einfache Firmen-Erklärung (Notiz „Firma einfach erklärt“), als sicher maskiertes HTML
+    efm, erest = frontmatter(lies(firma / "Firma einfach erklärt.md"))
+    erest = re.sub(r"^# .*\n", "", erest.strip() + "\n", count=1)
+    erklaerung = {"html": md_html(erest), "erstellt": efm.get("erstellt", "")} if erest.strip() else {}
+
     abteilungen = tabelle(suche(personal, "Abteilungen"))
     stamm = tabelle(suche(personal, "Stammbelegschaft"))
     ehemalige = tabelle(suche(personal, "Ehemalige"))
@@ -298,7 +303,7 @@ def main(vault: Path, ziel: Path):
         "finanzen": {"summen": summen, "grenzen": grenzen, "fristen": fristen},
         "sicherheit": sicherheit,
         "kontingent": {"woche": woche, "woche_max": 30, "schicht_max": 8},
-        "wochen": wochenvergleich, "verkauf": verkauf[-12:],
+        "wochen": wochenvergleich, "erklaerung": erklaerung, "verkauf": verkauf[-12:],
     }
     roh = json.dumps(daten, ensure_ascii=False, separators=(",", ":"))
     roh = sauber(roh)
