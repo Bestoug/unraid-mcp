@@ -258,6 +258,16 @@ def main(vault: Path, ziel: Path):
     stamm = tabelle(suche(personal, "Stammbelegschaft"))
     ehemalige = tabelle(suche(personal, "Ehemalige"))
     auftr = auftraege(lies(firma / "Auftragsbuch.md"))
+    # Ausführliche Erklärungen zu Vorschlägen (Erklärungen.md, Abschnitte „## V-xxx“)
+    for vid, zeilen in abschnitte(lies(firma / "Erklärungen.md")).items():
+        teile = []
+        for z in zeilen:
+            m = re.match(r"^\*\*(.+?):\*\*\s*(.+)$", z.strip())
+            if m:
+                teile.append({"titel": text(m.group(1)), "text": text(m.group(2))})
+        for a in auftr:
+            if a["id"] == vid.strip():
+                a["erklaerung"] = teile
     sch = schichten(lies(firma / "Leistungsberichte.md"))
 
     heute = dt.date.today()
